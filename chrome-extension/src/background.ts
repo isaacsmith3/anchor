@@ -182,6 +182,7 @@ async function deleteMode(modeId: string) {
 }
 
 // Start a blocking session with a specific mode
+// Requires that no other session is currently active
 async function startBlockingSession(modeId: string) {
   const modes = await getModes();
   const mode = modes.find((m) => m.id === modeId);
@@ -190,6 +191,20 @@ async function startBlockingSession(modeId: string) {
     throw new Error("Mode not found");
   }
 
+  // Check if there's already an active session
+  const activeMode = await getActiveMode();
+  if (activeMode && activeMode.id !== modeId) {
+    throw new Error(
+      `A blocking session is already active with "${activeMode.name}". Please stop it first before starting a new one.`
+    );
+  }
+
+  // If the same mode is already active, do nothing
+  if (activeMode && activeMode.id === modeId) {
+    return;
+  }
+
+  // Start new session
   await chrome.storage.local.set({ [STORAGE_KEYS.ACTIVE_MODE]: mode });
   await updateBlockingRules(mode.websites);
 

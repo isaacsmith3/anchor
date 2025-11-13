@@ -11,6 +11,16 @@ const BlockedPage: React.FC = () => {
     if (site) {
       setBlockedSite(decodeURIComponent(site));
     }
+
+    // Set dark mode background
+    document.body.style.backgroundColor = "#000000";
+    document.documentElement.style.backgroundColor = "#000000";
+
+    return () => {
+      // Cleanup on unmount
+      document.body.style.backgroundColor = "";
+      document.documentElement.style.backgroundColor = "";
+    };
   }, []);
 
   const handleUnblock = async () => {
@@ -49,38 +59,30 @@ const BlockedPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-5 bg-white">
+    <div className="min-h-screen flex items-center justify-center p-5 bg-black">
       <div className="w-full max-w-[600px]">
-        <div className="bg-white rounded-lg p-12 shadow-[0_20px_60px_rgba(0,0,0,0.1)] text-center animate-[slideUp_0.4s_ease-out]">
+        <div className="bg-gray-900 rounded-lg p-12 border border-gray-700 text-center animate-[slideUp_0.4s_ease-out] shadow-lg">
           <div className="text-6xl mb-6">⚓️</div>
-          <h1 className="text-3xl text-mono-black mb-3 font-semibold">
+          <h1 className="text-3xl text-white mb-3 font-semibold">
             Site Blocked
           </h1>
-          <p className="text-lg text-mono-black font-semibold mb-4 break-words">
+          <p className="text-lg text-white font-semibold mb-4 break-words">
             {blockedSite || "This site is blocked by Anchor"}
           </p>
-          <p className="text-base text-mono-gray-text leading-relaxed mb-8">
-            This site is currently blocked by your active blocking mode. Click
-            the button below to unblock and access the site.
+          <p className="text-base text-gray-400 leading-relaxed mb-8">
+            This site is currently blocked by your active blocking mode.
           </p>
 
           <div className="flex flex-col gap-3 mb-6">
             <button
-              className="w-full px-8 py-4 border border-mono-black rounded bg-mono-black text-white text-base font-semibold cursor-pointer transition-all hover:bg-mono-dark hover:-translate-y-0.5 hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] active:translate-y-0 disabled:bg-mono-gray-input disabled:text-mono-gray-muted disabled:border-mono-gray-input disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
-              onClick={handleUnblock}
-              disabled={isUnblocking}
-            >
-              {isUnblocking ? "Unblocking..." : "Unblock Site"}
-            </button>
-            <button
-              className="w-full px-8 py-4 border border-mono-gray-input rounded bg-mono-gray-light text-mono-gray-text text-base font-semibold cursor-pointer transition-all hover:bg-mono-gray-border"
+              className="w-full px-8 py-4 border-2 border-gray-700 rounded-lg bg-gray-900 text-gray-300 text-base font-semibold cursor-pointer transition-all hover:bg-gray-800 hover:border-gray-600 hover:text-white"
               onClick={handleGoBack}
             >
               ← Go Back
             </button>
           </div>
 
-          <div className="border-t border-mono-gray-border pt-6 text-[13px] text-mono-gray-muted">
+          <div className="border-t border-gray-700 pt-6 text-[13px] text-gray-400">
             <p className="mb-1">Need to manage your blocked sites?</p>
             <p>Click the Anchor extension icon in your toolbar</p>
           </div>

@@ -15,6 +15,16 @@ module.exports = {
             muted: "#999999",
           },
         },
+        accent: {
+          blue: "#2563eb",
+          blueLight: "#dbeafe",
+          green: "#059669",
+          greenLight: "#d1fae5",
+          red: "#dc2626",
+          redLight: "#fee2e2",
+          purple: "#7c3aed",
+          purpleLight: "#ede9fe",
+        },
       },
       fontFamily: {
         sans: [
