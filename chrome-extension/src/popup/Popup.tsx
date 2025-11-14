@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { supabase, initializeSession, clearSession } from "../lib/supabase";
+import Auth from "./Auth";
 
 interface Mode {
   id: string;
@@ -10,6 +12,8 @@ interface Mode {
 type View = "blocking" | "modes";
 
 const Popup: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [currentView, setCurrentView] = useState<View>("blocking");
   const [modes, setModes] = useState<Mode[]>([]);
   const [activeMode, setActiveMode] = useState<Mode | null>(null);
@@ -22,10 +26,80 @@ const Popup: React.FC = () => {
   const [websiteInput, setWebsiteInput] = useState("");
   const [websites, setWebsites] = useState<string[]>([]);
 
+  // Check authentication status on mount
   useEffect(() => {
-    loadModes();
-    loadActiveMode();
+    console.log("Popup: Component mounted, checking auth...");
+    checkAuth();
   }, []);
+
+  // Load modes and active mode when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadModes();
+      loadActiveMode();
+    }
+  }, [isAuthenticated]);
+
+  // Listen for auth state changes
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
+        setUser(session.user);
+        setIsAuthenticated(true);
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+        await clearSession();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const session = await initializeSession();
+      if (session) {
+        setUser(session.user);
+        setIsAuthenticated(true);
+      } else {
+        const {
+          data: { session: currentSession },
+        } = await supabase.auth.getSession();
+        if (currentSession) {
+          setUser(currentSession.user);
+          setIsAuthenticated(true);
+          await clearSession(); // Clear old storage format
+        } else {
+          setIsAuthenticated(false);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking auth:", error);
+      setIsAuthenticated(false);
+    }
+  };
+
+  const handleAuthSuccess = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session) {
+      setUser(session.user);
+      setIsAuthenticated(true);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    await clearSession();
+    setUser(null);
+    setIsAuthenticated(false);
+  };
 
   // Redirect to blocking view if a session becomes active while on modes page
   useEffect(() => {
@@ -264,6 +338,22 @@ const Popup: React.FC = () => {
     }
   };
 
+  // Show loading state while checking authentication
+  if (isAuthenticated === null) {
+    console.log("Popup: Loading authentication state...");
+    return (
+      <div className="flex flex-col w-full min-w-[400px] min-h-full antialiased bg-gradient-to-b from-gray-50 to-white text-mono-black items-center justify-center py-12">
+        <div className="text-2xl mb-2">⚓</div>
+        <p className="text-sm text-mono-gray-muted">Loading...</p>
+      </div>
+    );
+  }
+
+  // Show auth component if not authenticated
+  if (!isAuthenticated) {
+    return <Auth onAuthSuccess={handleAuthSuccess} />;
+  }
+
   const isDarkMode = !!activeMode;
 
   return (
@@ -275,16 +365,24 @@ const Popup: React.FC = () => {
       }`}
     >
       <header
-        className={`px-6 py-7 text-center border-b shadow-sm transition-colors duration-300 ${
+        className={`px-6 py-7 text-center border-b shadow-sm transition-colors duration-300 relative ${
           isDarkMode
             ? "bg-black border-gray-700 text-white"
             : "bg-gradient-to-br from-mono-dark via-mono-black to-mono-dark border-mono-black text-black"
         }`}
       >
+        <button
+          onClick={handleSignOut}
+          className="absolute top-3 right-3 text-xs text-gray-400 hover:text-white transition-colors"
+          title="Sign out"
+        >
+          Sign Out
+        </button>
         <div className="text-2xl mb-1">⚓</div>
         <h1 className="text-xl font-semibold mb-0.5 tracking-tight">
           Anchor Blocker
         </h1>
+        {user && <p className="text-xs text-gray-400 mt-1">{user.email}</p>}
       </header>
 
       {/* Tab Navigation */}

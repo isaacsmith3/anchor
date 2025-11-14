@@ -1,5 +1,7 @@
 const path = require("path");
 const CopyPlugin = require("copy-webpack-plugin");
+const webpack = require("webpack");
+const Dotenv = require("dotenv-webpack");
 
 module.exports = {
   entry: {
@@ -30,6 +32,11 @@ module.exports = {
     extensions: [".tsx", ".ts", ".js"],
   },
   plugins: [
+    new Dotenv({
+      path: path.resolve(__dirname, ".env"),
+      safe: false, // Don't require .env.example
+      systemvars: true, // Also load system environment variables
+    }),
     new CopyPlugin({
       patterns: [
         { from: "manifest.json", to: "manifest.json" },
@@ -38,6 +45,8 @@ module.exports = {
         { from: "public", to: ".", noErrorOnMissing: true },
       ],
     }),
+    // Note: dotenv-webpack automatically injects process.env variables via DefinePlugin
+    // So we don't need a separate DefinePlugin here - that was causing the conflict warnings
   ],
   optimization: {
     minimize: false,
