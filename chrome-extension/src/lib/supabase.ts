@@ -14,9 +14,12 @@ const SUPABASE_URL = process.env.SUPABASE_URL || "YOUR_SUPABASE_URL";
 const SUPABASE_ANON_KEY =
   process.env.SUPABASE_ANON_KEY || "YOUR_SUPABASE_ANON_KEY";
 
-console.log("Supabase config:", {
-  url: SUPABASE_URL?.substring(0, 30) + "...",
+console.log("Supabase config check:", {
+  url: SUPABASE_URL?.substring(0, 50),
+  urlLength: SUPABASE_URL?.length,
   hasKey: !!SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY",
+  keyLength: SUPABASE_ANON_KEY?.length,
+  isPlaceholder: SUPABASE_URL === "YOUR_SUPABASE_URL",
 });
 
 if (

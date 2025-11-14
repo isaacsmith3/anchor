@@ -1,7 +1,21 @@
 const path = require("path");
 const CopyPlugin = require("copy-webpack-plugin");
 const webpack = require("webpack");
-const Dotenv = require("dotenv-webpack");
+// Load .env file directly first to ensure values are available
+require("dotenv").config({ path: path.resolve(__dirname, ".env") });
+
+// Verify values are loaded (for debugging)
+const supabaseUrl = process.env.SUPABASE_URL || "YOUR_SUPABASE_URL";
+const supabaseKey = process.env.SUPABASE_ANON_KEY || "YOUR_SUPABASE_ANON_KEY";
+
+if (supabaseUrl !== "YOUR_SUPABASE_URL") {
+  console.log(
+    "✓ Supabase URL loaded from .env:",
+    supabaseUrl.substring(0, 30) + "..."
+  );
+} else {
+  console.warn("⚠️ Supabase URL not found in .env file");
+}
 
 module.exports = {
   entry: {
@@ -32,10 +46,10 @@ module.exports = {
     extensions: [".tsx", ".ts", ".js"],
   },
   plugins: [
-    new Dotenv({
-      path: path.resolve(__dirname, ".env"),
-      safe: false, // Don't require .env.example
-      systemvars: true, // Also load system environment variables
+    // Explicitly define environment variables (already loaded via require('dotenv') above)
+    new webpack.DefinePlugin({
+      "process.env.SUPABASE_URL": JSON.stringify(supabaseUrl),
+      "process.env.SUPABASE_ANON_KEY": JSON.stringify(supabaseKey),
     }),
     new CopyPlugin({
       patterns: [
