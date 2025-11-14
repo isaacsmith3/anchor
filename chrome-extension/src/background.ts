@@ -13,6 +13,8 @@ const STORAGE_KEYS = {
 
 // Flag to prevent infinite loops when syncing from Supabase
 let isSyncingFromSupabase = false;
+let blockingSessionsChannel: ReturnType<typeof supabase.channel> | null = null;
+let blockingSessionsChannelUserId: string | null = null;
 
 // Initialize extension
 chrome.runtime.onInstalled.addListener(() => {
@@ -102,6 +104,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
       return true;
 
+    case "SYNC_SESSION_STATE":
+      syncLocalStateWithSupabase("manual-request")
+        .then(async () => {
+          const mode = await getActiveMode();
+          sendResponse({ success: true, data: mode });
+        })
+        .catch((error) => {
+          sendResponse({ success: false, error: error.message });
+        });
+      return true;
+
+    case "INIT_REALTIME_SUBSCRIPTION":
+      initializeRealtimeSubscription(true)
+        .then(() => {
+          sendResponse({ success: true });
+        })
+        .catch((error) => {
+          sendResponse({ success: false, error: error.message });
+        });
+      return true;
+
     default:
       sendResponse({ success: false, error: "Unknown message type" });
   }
@@ -168,6 +191,138 @@ async function getCurrentUserSession() {
   } catch (error) {
     console.error("Error getting user session:", error);
     return null;
+  }
+}
+
+type BlockingSessionRecord = {
+  id: string;
+  user_id: string;
+  mode_id: string;
+  mode_name: string;
+  websites: string[];
+  is_active: boolean;
+  started_at: string | null;
+  stopped_at: string | null;
+  created_at: string;
+};
+
+async function fetchActiveBlockingSessionRecord(
+  userId: string
+): Promise<BlockingSessionRecord | null> {
+  try {
+    const { data, error } = await supabase
+      .from("blocking_sessions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .order("started_at", { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.error("Error fetching active session from Supabase:", error);
+      return null;
+    }
+
+    if (data && data.length > 0) {
+      return data[0] as BlockingSessionRecord;
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error querying Supabase for active session:", error);
+    return null;
+  }
+}
+
+function haveSameWebsites(a: string[] = [], b: string[] = []) {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+async function syncLocalStateWithSupabase(
+  triggerSource: string = "manual"
+): Promise<any | null> {
+  const session = await getCurrentUserSession();
+
+  if (!session || !session.user) {
+    console.log(
+      `[Sync] Skipping Supabase sync (${triggerSource}): no authenticated user`
+    );
+    return null;
+  }
+
+  console.log(
+    `[Sync] Checking Supabase for active session (${triggerSource})...`
+  );
+
+  const remoteActiveSession = await fetchActiveBlockingSessionRecord(
+    session.user.id
+  );
+
+  isSyncingFromSupabase = true;
+
+  try {
+    const localActiveMode = await getActiveMode();
+
+    if (!remoteActiveSession) {
+      if (localActiveMode) {
+        console.log(
+          "[Sync] Remote session inactive. Stopping local blocking session."
+        );
+        await stopBlockingSession();
+      } else {
+        console.log("[Sync] No remote or local session active. Nothing to do.");
+      }
+
+      return null;
+    }
+
+    const restoredMode = {
+      id: remoteActiveSession.mode_id,
+      name: remoteActiveSession.mode_name,
+      websites: remoteActiveSession.websites || [],
+      created_at:
+        remoteActiveSession.started_at ||
+        remoteActiveSession.created_at ||
+        new Date().toISOString(),
+    };
+
+    const needsUpdate =
+      !localActiveMode ||
+      localActiveMode.id !== restoredMode.id ||
+      localActiveMode.name !== restoredMode.name ||
+      !haveSameWebsites(
+        localActiveMode.websites || [],
+        restoredMode.websites || []
+      );
+
+    if (needsUpdate) {
+      console.log(
+        `[Sync] Applying Supabase session "${restoredMode.name}" locally.`
+      );
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.ACTIVE_MODE]: restoredMode,
+      });
+      await updateBlockingRules(restoredMode.websites);
+    } else {
+      console.log("[Sync] Local session already matches Supabase.");
+    }
+
+    return restoredMode;
+  } catch (error) {
+    console.error("Error syncing local state with Supabase:", error);
+    return null;
+  } finally {
+    isSyncingFromSupabase = false;
   }
 }
 
@@ -474,76 +629,76 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 // Restore active session from Supabase on startup
 async function restoreActiveSessionFromSupabase() {
   try {
-    const session = await getCurrentUserSession();
-    if (!session || !session.user) {
-      return;
-    }
-
-    // Check Supabase for active session
-    const { data, error } = await supabase
-      .from("blocking_sessions")
-      .select("*")
-      .eq("user_id", session.user.id)
-      .eq("is_active", true)
-      .single();
-
-    if (error) {
-      if (error.code === "PGRST116") {
-        // No active session found
-        return;
-      }
-      console.error("Error fetching active session from Supabase:", error);
-      return;
-    }
-
-    if (data) {
-      const sessionData = data as {
-        mode_id: string;
-        mode_name: string;
-        websites: string[];
-        created_at: string;
-      };
-
-      // Check if we already have this session active locally
-      const localActiveMode = await getActiveMode();
-      if (localActiveMode && localActiveMode.id === sessionData.mode_id) {
-        // Already active, nothing to do
-        return;
-      }
-
-      // Restore session locally
-      const restoredMode = {
-        id: sessionData.mode_id,
-        name: sessionData.mode_name,
-        websites: sessionData.websites,
-        created_at: sessionData.created_at,
-      };
-
-      await chrome.storage.local.set({
-        [STORAGE_KEYS.ACTIVE_MODE]: restoredMode,
-      });
-      await updateBlockingRules(sessionData.websites);
-      console.log(
-        "Restored active session from Supabase:",
-        sessionData.mode_name
-      );
-    }
+    await syncLocalStateWithSupabase("startup");
   } catch (error) {
     console.error("Error restoring session from Supabase:", error);
   }
 }
 
 // Initialize real-time subscription for blocking sessions
-async function initializeRealtimeSubscription() {
+async function initializeRealtimeSubscription(force = false) {
   try {
     const session = await getCurrentUserSession();
     if (!session || !session.user) {
+      console.log(
+        "Skipping real-time subscription: user is not authenticated."
+      );
       return;
     }
 
-    // Subscribe to changes in blocking_sessions for this user
-    const subscription = supabase
-      .channel("blocking_sessions_changes")
+    if (
+      !force &&
+      blockingSessionsChannel &&
+      blockingSessionsChannelUserId === session.user.id
+    ) {
+      console.log(
+        "Real-time subscription already active for user:",
+        session.user.id
+      );
+      return;
+    }
+
+    if (blockingSessionsChannel) {
+      try {
+        await supabase.removeChannel(blockingSessionsChannel);
+      } catch (channelError) {
+        console.warn(
+          "Error removing existing real-time channel:",
+          channelError
+        );
+      }
+      blockingSessionsChannel = null;
+      blockingSessionsChannelUserId = null;
+    }
+
+    const handleChange = async (payload: any) => {
+      console.log("Received blocking session change from Supabase:", {
+        eventType: payload.eventType,
+        newValue: payload.new,
+        oldValue: payload.old,
+      });
+
+      try {
+        await syncLocalStateWithSupabase(`realtime:${payload.eventType}`);
+      } catch (error) {
+        console.error("Error syncing state after realtime payload:", error);
+      }
+    };
+
+    const channelName = `blocking_sessions_changes_${session.user.id}`;
+
+    blockingSessionsChannel = supabase
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "blocking_sessions",
+          filter: `user_id=eq.${session.user.id}`,
+        },
+        handleChange
+      )
       .on(
         "postgres_changes",
         {
@@ -552,30 +707,23 @@ async function initializeRealtimeSubscription() {
           table: "blocking_sessions",
           filter: `user_id=eq.${session.user.id}`,
         },
-        async (payload) => {
-          console.log(
-            "Received blocking session update from Supabase:",
-            payload
-          );
-
-          // If session was deactivated remotely
-          if (
-            payload.new &&
-            payload.new.is_active === false &&
-            payload.old &&
-            payload.old.is_active === true
-          ) {
-            console.log("Session deactivated remotely, stopping locally");
-            isSyncingFromSupabase = true;
-            try {
-              await stopBlockingSession();
-            } finally {
-              isSyncingFromSupabase = false;
-            }
-          }
-        }
+        handleChange
       )
-      .subscribe();
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "blocking_sessions",
+          filter: `user_id=eq.${session.user.id}`,
+        },
+        handleChange
+      )
+      .subscribe((status) => {
+        console.log("Blocking sessions channel status:", status);
+      });
+
+    blockingSessionsChannelUserId = session.user.id;
 
     console.log("Initialized real-time subscription for blocking sessions");
   } catch (error) {

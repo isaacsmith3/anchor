@@ -34,10 +34,26 @@ const Popup: React.FC = () => {
 
   // Load modes and active mode when authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      loadModes();
-      loadActiveMode();
+    if (!isAuthenticated) {
+      return;
     }
+
+    loadModes();
+    loadActiveMode();
+
+    const initializeRealtimeSync = async () => {
+      try {
+        await chrome.runtime.sendMessage({
+          type: "INIT_REALTIME_SUBSCRIPTION",
+        });
+      } catch (error) {
+        console.error("Error initializing real-time subscription:", error);
+      }
+
+      await syncActiveModeWithSupabase();
+    };
+
+    initializeRealtimeSync();
   }, [isAuthenticated]);
 
   // Listen for auth state changes
@@ -57,6 +73,27 @@ const Popup: React.FC = () => {
 
     return () => {
       subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleStorageChange = (
+      changes: Record<string, chrome.storage.StorageChange>,
+      areaName: string
+    ) => {
+      if (areaName !== "local") {
+        return;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(changes, "active_mode")) {
+        setActiveMode(changes.active_mode.newValue || null);
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
     };
   }, []);
 
@@ -91,6 +128,11 @@ const Popup: React.FC = () => {
     if (session) {
       setUser(session.user);
       setIsAuthenticated(true);
+      try {
+        await syncActiveModeWithSupabase();
+      } catch (error) {
+        console.error("Error syncing state after login:", error);
+      }
     }
   };
 
@@ -158,6 +200,20 @@ const Popup: React.FC = () => {
       }
     } catch (error) {
       console.error("Error loading active mode:", error);
+    }
+  };
+
+  const syncActiveModeWithSupabase = async () => {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "SYNC_SESSION_STATE",
+      });
+
+      if (response?.success) {
+        setActiveMode(response.data);
+      }
+    } catch (error) {
+      console.error("Error syncing active mode with Supabase:", error);
     }
   };
 
