@@ -11,4 +11,4 @@
 | 11/8/25   | Talking to customers     | 0.5   |
 | 11/11/25  | Ditch current, ideate    | 1     |
 | 11/12/25  | Pitch, plan, work        | 4     |
-
+| 11/14/25  | Supabase, mobile app     | 5     |
