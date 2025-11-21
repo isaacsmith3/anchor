@@ -4,14 +4,22 @@ import Constants from "expo-constants";
 
 // Load environment variables from app.config.js extra field or process.env
 // Expo loads EXPO_PUBLIC_ prefixed vars and makes them available via Constants
+const expoExtra =
+  Constants.expoConfig?.extra ||
+  Constants.manifestExtra ||
+  (Constants as any).manifest?.extra ||
+  {};
+
 const SUPABASE_URL =
-  Constants.expoConfig?.extra?.supabaseUrl ||
-  (typeof process !== "undefined" && process.env?.EXPO_PUBLIC_SUPABASE_URL) ||
+  expoExtra.supabaseUrl ||
+  (typeof process !== "undefined" &&
+    (process.env?.EXPO_PUBLIC_SUPABASE_URL || process.env?.SUPABASE_URL)) ||
   "YOUR_SUPABASE_URL";
 const SUPABASE_ANON_KEY =
-  Constants.expoConfig?.extra?.supabaseAnonKey ||
+  expoExtra.supabaseAnonKey ||
   (typeof process !== "undefined" &&
-    process.env?.EXPO_PUBLIC_SUPABASE_ANON_KEY) ||
+    (process.env?.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+      process.env?.SUPABASE_ANON_KEY)) ||
   "YOUR_SUPABASE_ANON_KEY";
 
 // Debug logging
@@ -40,7 +48,7 @@ if (
   SUPABASE_ANON_KEY === "YOUR_SUPABASE_ANON_KEY"
 ) {
   console.warn(
-    "⚠️ Supabase credentials not configured. Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in your .env file or app.json"
+    "⚠️ Supabase credentials not configured. Please set EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_URL / SUPABASE_ANON_KEY) in your .env file or app.config.js extra."
   );
 }
 
@@ -62,7 +70,7 @@ if (
   !isValidUrl(SUPABASE_URL)
 ) {
   console.error(
-    "⚠️ Supabase credentials not configured properly. Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in your .env file or app.json extra field, then restart the dev server."
+    "⚠️ Supabase credentials not configured properly. Ensure EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_URL / SUPABASE_ANON_KEY) are set and restart the dev server."
   );
   // Create a dummy client that will fail gracefully
   supabaseClient = createClient(
@@ -79,6 +87,11 @@ if (
   );
 } else {
   try {
+    console.log("Creating Supabase client with:", {
+      url: SUPABASE_URL?.substring(0, 40) + "...",
+      keyLength: SUPABASE_ANON_KEY?.length,
+      keyPreview: SUPABASE_ANON_KEY?.substring(0, 20) + "...",
+    });
     supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         storage: ExpoSecureStoreAdapter,
@@ -87,6 +100,10 @@ if (
         detectSessionInUrl: false,
       },
     });
+    console.log("Supabase client created successfully");
+    // Verify the client has the correct URL
+    const clientUrl = (supabaseClient as any).supabaseUrl;
+    console.log("Client URL:", clientUrl?.substring(0, 40) + "...");
   } catch (error) {
     console.error("Error initializing Supabase client:", error);
     // Create a dummy client to prevent crashes

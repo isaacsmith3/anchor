@@ -24,10 +24,33 @@ export default function LoginScreen() {
 
     try {
       if (isLogin) {
+        // Clear any existing session first
+        await supabase.auth.signOut();
+
+        const normalizedEmail = email.trim().toLowerCase();
+        console.log("Signing in with email:", normalizedEmail);
+        console.log("Password length:", password.length);
+
+        // Verify Supabase client configuration before attempting login
+        const clientUrl = (supabase as any).supabaseUrl;
+        console.log("Supabase client URL:", clientUrl);
+
         // Login
         const { data, error } = await supabase.auth.signInWithPassword({
-          email,
+          email: normalizedEmail,
           password,
+        });
+
+        console.log("Sign in response:", {
+          hasSession: !!data.session,
+          hasUser: !!data.user,
+          error: error
+            ? {
+                message: error.message,
+                status: error.status,
+                name: error.name,
+              }
+            : null,
         });
 
         if (error) throw error;
@@ -38,8 +61,9 @@ export default function LoginScreen() {
         }
       } else {
         // Sign up
+        const normalizedEmail = email.trim().toLowerCase();
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: normalizedEmail,
           password,
         });
 

@@ -10,7 +10,21 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm install
    ```
 
-2. Start the app
+2. Configure Supabase credentials  
+   Create a `.env` file in `mobile-app/` **or** reuse the existing one in the
+   repo root (the config now loads both locations) with the Supabase project
+   values you already use for the Chrome extension:
+
+   ```
+   EXPO_PUBLIC_SUPABASE_URL=your-project-url
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   ```
+
+   The mobile app also falls back to `SUPABASE_URL` / `SUPABASE_ANON_KEY`, so you
+   can reuse the exact same variable names from the extension if you prefer. Just
+   restart the Expo dev server after updating `.env`.
+
+3. Start the app
 
    ```bash
    npx expo start

@@ -1,4 +1,25 @@
-require("dotenv").config();
+const path = require("path");
+const dotenv = require("dotenv");
+
+// Load env values from the mobile-app folder first, then fall back to the repo root.
+// This lets us reuse the same Supabase credentials file that the Chrome extension uses.
+// Get the directory of this config file
+const currentDir = path.dirname(require.resolve("./app.config.js"));
+const envCandidates = [
+  path.resolve(currentDir, ".env"),
+  path.resolve(currentDir, "..", ".env"),
+];
+
+for (const envPath of envCandidates) {
+  dotenv.config({ path: envPath, override: false });
+}
+
+const SUPABASE_URL =
+  process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+const SUPABASE_ANON_KEY =
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  "";
 
 module.exports = {
   expo: {
@@ -47,8 +68,8 @@ module.exports = {
       reactCompiler: true,
     },
     extra: {
-      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || "",
-      supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "",
+      supabaseUrl: SUPABASE_URL,
+      supabaseAnonKey: SUPABASE_ANON_KEY,
     },
   },
 };
