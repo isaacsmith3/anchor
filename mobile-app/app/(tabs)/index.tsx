@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { supabase } from "@/lib/supabase";
 import SessionCard from "@/components/SessionCard";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 
 interface BlockingSession {
   id: string;
@@ -25,6 +26,22 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isStopping, setIsStopping] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Refresh when screen comes into focus (e.g., when switching back to app)
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log("Screen focused, refreshing session...");
+      fetchActiveSession();
+    }, [])
+  );
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    console.log("Manual refresh triggered");
+    await fetchActiveSession();
+    setRefreshing(false);
+  }, []);
 
   const fetchActiveSession = async () => {
     try {
@@ -97,18 +114,29 @@ export default function HomeScreen() {
 
   useEffect(() => {
     let subscription: ReturnType<typeof supabase.channel> | null = null;
+    let isMounted = true;
 
     const setupRealtimeSubscription = async () => {
-      // First fetch the current session
-      await fetchActiveSession();
-
-      // Get the current user to filter subscriptions
+      // Get the current user first
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user) {
-        console.log("No user found, skipping realtime subscription");
+      if (!user || !isMounted) {
+        console.log(
+          "No user found or component unmounted, skipping realtime subscription"
+        );
+        return;
+      }
+
+      console.log("Setting up realtime subscription for user:", user.id);
+
+      // First fetch the current session
+      await fetchActiveSession();
+
+      // Check if component is still mounted after fetch
+      if (!isMounted) {
+        console.log("Component unmounted after fetch, skipping subscription");
         return;
       }
 
@@ -125,10 +153,18 @@ export default function HomeScreen() {
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
-            console.log("Realtime INSERT - new blocking session:", payload.new);
+            console.log("🔔 Realtime INSERT event received:", {
+              payload,
+              newRecord: payload.new,
+              isActive: payload.new?.is_active,
+              userId: payload.new?.user_id,
+            });
             // Only refetch if it's an active session
-            if (payload.new.is_active) {
+            if (payload.new?.is_active && isMounted) {
+              console.log("✅ New active session detected, fetching...");
               fetchActiveSession();
+            } else {
+              console.log("⚠️ Session is not active, ignoring");
             }
           }
         )
@@ -141,15 +177,46 @@ export default function HomeScreen() {
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
-            console.log("Realtime UPDATE - session changed:", {
+            console.log("🔔 Realtime UPDATE event received:", {
               old: payload.old,
               new: payload.new,
+              eventType: payload.eventType,
+              fullPayload: JSON.stringify(payload, null, 2),
             });
-            // If session was deactivated, clear it immediately
-            if (payload.new.is_active === false) {
+            if (!isMounted) {
+              console.log("⚠️ Component unmounted, ignoring UPDATE");
+              return;
+            }
+
+            // Check if session was deactivated
+            const wasActive = payload.old?.is_active === true;
+            const isNowActive = payload.new?.is_active === true;
+            const isNowInactive = payload.new?.is_active === false;
+
+            console.log("Session state change:", {
+              wasActive,
+              isNowActive,
+              isNowInactive,
+              oldIsActive: payload.old?.is_active,
+              newIsActive: payload.new?.is_active,
+            });
+
+            if (isNowInactive && wasActive) {
+              console.log(
+                "❌ Session deactivated (was active, now inactive), clearing..."
+              );
               setSession(null);
-            } else if (payload.new.is_active === true) {
+            } else if (isNowActive) {
+              console.log(
+                "✅ Session activated/updated, fetching latest data..."
+              );
               // Session was activated or updated, refetch to get latest data
+              fetchActiveSession();
+            } else {
+              console.log(
+                "ℹ️ Session update (no active state change), refetching to be safe..."
+              );
+              // Refetch to ensure we have the latest state
               fetchActiveSession();
             }
           }
@@ -164,15 +231,27 @@ export default function HomeScreen() {
           },
           (payload) => {
             console.log("Realtime DELETE - session removed:", payload.old);
-            setSession(null);
+            if (isMounted) {
+              setSession(null);
+            }
           }
         )
-        .subscribe((status) => {
+        .subscribe((status, err) => {
           console.log("Realtime subscription status:", status);
+          if (err) {
+            console.error("❌ Realtime subscription error:", err);
+          }
           if (status === "SUBSCRIBED") {
             console.log(
-              "✅ Successfully subscribed to blocking session changes"
+              "✅ Successfully subscribed to blocking session changes for user:",
+              user.id
             );
+          } else if (status === "CHANNEL_ERROR") {
+            console.error("❌ Channel error - subscription failed");
+          } else if (status === "TIMED_OUT") {
+            console.error("❌ Subscription timed out");
+          } else if (status === "CLOSED") {
+            console.log("⚠️ Subscription closed");
           }
         });
     };
@@ -180,6 +259,7 @@ export default function HomeScreen() {
     setupRealtimeSubscription();
 
     return () => {
+      isMounted = false;
       if (subscription) {
         console.log("Unsubscribing from realtime channel");
         subscription.unsubscribe();
@@ -199,7 +279,12 @@ export default function HomeScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
       <View style={styles.header}>
         <Text style={styles.title}>⚓ Anchor Blocker</Text>
         {isAuthenticated && (
