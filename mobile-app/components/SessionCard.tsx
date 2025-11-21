@@ -18,12 +18,14 @@ interface SessionCardProps {
   session: Session;
   onStop: (sessionId: string) => Promise<void>;
   isLoading?: boolean;
+  isDarkMode?: boolean;
 }
 
 export default function SessionCard({
   session,
   onStop,
   isLoading,
+  isDarkMode = false,
 }: SessionCardProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -31,20 +33,22 @@ export default function SessionCard({
   };
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, isDarkMode && styles.cardDark]}>
       <View style={styles.header}>
-        <Text style={styles.modeName}>{session.mode_name}</Text>
+        <Text style={[styles.modeName, isDarkMode && styles.modeNameDark]}>
+          {session.mode_name}
+        </Text>
         <View style={styles.badge}>
           <Text style={styles.badgeText}>ACTIVE</Text>
         </View>
       </View>
 
       <View style={styles.info}>
-        <Text style={styles.infoLabel}>
+        <Text style={[styles.infoLabel, isDarkMode && styles.infoLabelDark]}>
           Blocking {session.websites.length} website
           {session.websites.length !== 1 ? "s" : ""}
         </Text>
-        <Text style={styles.infoLabel}>
+        <Text style={[styles.infoLabel, isDarkMode && styles.infoLabelDark]}>
           Started: {formatDate(session.started_at)}
         </Text>
       </View>
@@ -76,6 +80,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  cardDark: {
+    backgroundColor: "#1a1a1a",
+    shadowOpacity: 0.3,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -87,6 +95,9 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#000",
     flex: 1,
+  },
+  modeNameDark: {
+    color: "#ffffff",
   },
   badge: {
     backgroundColor: "#10b981",
@@ -107,6 +118,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     marginBottom: 4,
+  },
+  infoLabelDark: {
+    color: "#9ca3af",
   },
   stopButton: {
     backgroundColor: "#ef4444",

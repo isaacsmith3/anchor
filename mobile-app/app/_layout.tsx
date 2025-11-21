@@ -16,22 +16,77 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const systemColorScheme = useColorScheme();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [hasActiveSession, setHasActiveSession] = useState(false);
+
+  const checkActiveSession = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("blocking_sessions")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .limit(1);
+
+      setHasActiveSession(!error && data && data.length > 0);
+    } catch {
+      setHasActiveSession(false);
+    }
+  };
 
   useEffect(() => {
-    // Check initial auth state - use getUser() to validate session with server
-    supabase.auth.getUser().then(({ data: { user }, error }) => {
-      if (error || !user) {
-        // If there's an error or no user, clear any stale session
-        supabase.auth.signOut().catch(() => {
-          // Ignore errors during signout
-        });
-        setIsAuthenticated(false);
-      } else {
-        setIsAuthenticated(true);
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const setupChannel = async (userId: string) => {
+      // Unsubscribe from existing channel if any
+      if (channel) {
+        await channel.unsubscribe();
       }
-    });
+
+      // Create new channel for this user
+      channel = supabase
+        .channel(`active_session_check_${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "blocking_sessions",
+            filter: `user_id=eq.${userId}`,
+          },
+          async () => {
+            // Refetch active session when changes occur
+            const {
+              data: { user: currentUser },
+            } = await supabase.auth.getUser();
+            if (currentUser) {
+              checkActiveSession(currentUser.id);
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    // Check initial auth state - use getUser() to validate session with server
+    supabase.auth
+      .getUser()
+      .then(async ({ data: { user }, error: authError }) => {
+        if (authError || !user) {
+          // If there's an error or no user, clear any stale session
+          supabase.auth.signOut().catch(() => {
+            // Ignore errors during signout
+          });
+          setIsAuthenticated(false);
+          setHasActiveSession(false);
+        } else {
+          setIsAuthenticated(true);
+          // Check for active session
+          await checkActiveSession(user.id);
+          // Set up realtime channel
+          await setupChannel(user.id);
+        }
+      });
 
     // Listen for auth changes
     const {
@@ -43,15 +98,30 @@ export default function RootLayout() {
           data: { user },
         } = await supabase.auth.getUser();
         setIsAuthenticated(!!user);
+        if (user) {
+          await checkActiveSession(user.id);
+          await setupChannel(user.id);
+        }
       } else {
         setIsAuthenticated(false);
+        setHasActiveSession(false);
+        if (channel) {
+          await channel.unsubscribe();
+          channel = null;
+        }
       }
     });
 
     return () => {
       subscription.unsubscribe();
+      if (channel) {
+        channel.unsubscribe();
+      }
     };
   }, []);
+
+  // Use dark mode when there's an active session, otherwise use system preference
+  const colorScheme = hasActiveSession ? "dark" : systemColorScheme;
 
   // Show nothing while checking auth
   if (isAuthenticated === null) {
@@ -60,10 +130,20 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
         {isAuthenticated ? (
           <>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="(tabs)"
+              options={{
+                headerShown: false,
+                title: "",
+              }}
+            />
             <Stack.Screen
               name="modal"
               options={{ presentation: "modal", title: "Modal" }}
@@ -73,7 +153,7 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         )}
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style={hasActiveSession ? "light" : "auto"} />
     </ThemeProvider>
   );
 }

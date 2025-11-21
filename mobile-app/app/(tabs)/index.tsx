@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Alert,
   ActivityIndicator,
   RefreshControl,
@@ -25,7 +24,6 @@ export default function HomeScreen() {
   const [session, setSession] = useState<BlockingSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isStopping, setIsStopping] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   // Refresh when screen comes into focus (e.g., when switching back to app)
@@ -51,14 +49,12 @@ export default function HomeScreen() {
       } = await supabase.auth.getUser();
       if (!user || userError) {
         console.log("No authenticated user found, redirecting to login");
-        setIsAuthenticated(false);
         setIsLoading(false);
         // Clear any stale session and redirect
         await supabase.auth.signOut();
         router.replace("/(auth)/login");
         return;
       }
-      setIsAuthenticated(true);
 
       const { data, error } = await supabase
         .from("blocking_sessions")
@@ -105,11 +101,6 @@ export default function HomeScreen() {
     } finally {
       setIsStopping(false);
     }
-  };
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.replace("/(auth)/login");
   };
 
   useEffect(() => {
@@ -278,24 +269,19 @@ export default function HomeScreen() {
     );
   }
 
+  const isDarkMode = !!session;
+
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, isDarkMode && styles.containerDark]}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={isDarkMode ? "#fff" : undefined}
+        />
       }
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>⚓ Anchor Blocker</Text>
-        {isAuthenticated && (
-          <TouchableOpacity
-            onPress={handleSignOut}
-            style={styles.signOutButton}
-          >
-            <Text style={styles.signOutText}>Sign Out</Text>
-          </TouchableOpacity>
-        )}
-      </View>
 
       <View style={styles.content}>
         {session ? (
@@ -303,12 +289,19 @@ export default function HomeScreen() {
             session={session}
             onStop={deactivateSession}
             isLoading={isStopping}
+            isDarkMode={isDarkMode}
           />
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>📋</Text>
-            <Text style={styles.emptyTitle}>No Active Session</Text>
-            <Text style={styles.emptyText}>
+            <Text
+              style={[styles.emptyTitle, isDarkMode && styles.emptyTitleDark]}
+            >
+              No Active Session
+            </Text>
+            <Text
+              style={[styles.emptyText, isDarkMode && styles.emptyTextDark]}
+            >
               Start a blocking session from your browser extension to see it
               here.
             </Text>
@@ -324,6 +317,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
+  containerDark: {
+    backgroundColor: "#000000",
+  },
   header: {
     backgroundColor: "#fff",
     padding: 20,
@@ -334,10 +330,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e0e0e0",
   },
+  headerDark: {
+    backgroundColor: "#000000",
+    borderBottomColor: "#333333",
+  },
   title: {
     fontSize: 24,
     fontWeight: "600",
     color: "#000",
+  },
+  titleDark: {
+    color: "#ffffff",
   },
   signOutButton: {
     paddingHorizontal: 12,
@@ -347,8 +350,12 @@ const styles = StyleSheet.create({
     color: "#666",
     fontSize: 14,
   },
+  signOutTextDark: {
+    color: "#9ca3af",
+  },
   content: {
     padding: 20,
+    paddingTop: 100,
   },
   loadingContainer: {
     flex: 1,
@@ -378,10 +385,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: "center",
   },
+  emptyTitleDark: {
+    color: "#ffffff",
+  },
   emptyText: {
     fontSize: 16,
     color: "#666",
     textAlign: "center",
     lineHeight: 24,
+  },
+  emptyTextDark: {
+    color: "#9ca3af",
   },
 });
