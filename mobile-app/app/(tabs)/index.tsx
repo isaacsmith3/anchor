@@ -24,16 +24,24 @@ export default function HomeScreen() {
   const [session, setSession] = useState<BlockingSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isStopping, setIsStopping] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const fetchActiveSession = async () => {
     try {
       const {
         data: { user },
+        error: userError,
       } = await supabase.auth.getUser();
-      if (!user) {
+      if (!user || userError) {
+        console.log("No authenticated user found, redirecting to login");
+        setIsAuthenticated(false);
         setIsLoading(false);
+        // Clear any stale session and redirect
+        await supabase.auth.signOut();
+        router.replace("/(auth)/login");
         return;
       }
+      setIsAuthenticated(true);
 
       const { data, error } = await supabase
         .from("blocking_sessions")
@@ -88,27 +96,94 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
-    fetchActiveSession();
+    let subscription: ReturnType<typeof supabase.channel> | null = null;
 
-    // Set up real-time subscription
-    const subscription = supabase
-      .channel("blocking_sessions_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "blocking_sessions",
-        },
-        () => {
-          // Refetch when changes occur
-          fetchActiveSession();
-        }
-      )
-      .subscribe();
+    const setupRealtimeSubscription = async () => {
+      // First fetch the current session
+      await fetchActiveSession();
+
+      // Get the current user to filter subscriptions
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        console.log("No user found, skipping realtime subscription");
+        return;
+      }
+
+      // Set up real-time subscription filtered by user_id
+      const channelName = `blocking_sessions_changes_${user.id}`;
+      subscription = supabase
+        .channel(channelName)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "blocking_sessions",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log("Realtime INSERT - new blocking session:", payload.new);
+            // Only refetch if it's an active session
+            if (payload.new.is_active) {
+              fetchActiveSession();
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "blocking_sessions",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log("Realtime UPDATE - session changed:", {
+              old: payload.old,
+              new: payload.new,
+            });
+            // If session was deactivated, clear it immediately
+            if (payload.new.is_active === false) {
+              setSession(null);
+            } else if (payload.new.is_active === true) {
+              // Session was activated or updated, refetch to get latest data
+              fetchActiveSession();
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "blocking_sessions",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log("Realtime DELETE - session removed:", payload.old);
+            setSession(null);
+          }
+        )
+        .subscribe((status) => {
+          console.log("Realtime subscription status:", status);
+          if (status === "SUBSCRIBED") {
+            console.log(
+              "✅ Successfully subscribed to blocking session changes"
+            );
+          }
+        });
+    };
+
+    setupRealtimeSubscription();
 
     return () => {
-      subscription.unsubscribe();
+      if (subscription) {
+        console.log("Unsubscribing from realtime channel");
+        subscription.unsubscribe();
+      }
     };
   }, []);
 
@@ -127,9 +202,14 @@ export default function HomeScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>⚓ Anchor Blocker</Text>
-        <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
+        {isAuthenticated && (
+          <TouchableOpacity
+            onPress={handleSignOut}
+            style={styles.signOutButton}
+          >
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.content}>

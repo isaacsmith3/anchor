@@ -20,16 +20,32 @@ export default function RootLayout() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Check initial auth state
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAuthenticated(!!session);
+    // Check initial auth state - use getUser() to validate session with server
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (error || !user) {
+        // If there's an error or no user, clear any stale session
+        supabase.auth.signOut().catch(() => {
+          // Ignore errors during signout
+        });
+        setIsAuthenticated(false);
+      } else {
+        setIsAuthenticated(true);
+      }
     });
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session);
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Validate the session by checking if user exists
+      if (session) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        setIsAuthenticated(!!user);
+      } else {
+        setIsAuthenticated(false);
+      }
     });
 
     return () => {

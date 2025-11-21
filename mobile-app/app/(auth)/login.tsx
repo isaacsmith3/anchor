@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 
 export default function LoginScreen() {
   const [isLogin, setIsLogin] = useState(true);
@@ -18,15 +19,33 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const clearStoredSession = async () => {
+    try {
+      // Clear all Supabase-related keys from SecureStore
+      const keys = [
+        "sb-dvyburibnizilwwvocom-auth-token",
+        "supabase.auth.token",
+      ];
+      for (const key of keys) {
+        try {
+          await SecureStore.deleteItemAsync(key);
+        } catch {
+          // Key might not exist, that's fine
+        }
+      }
+      // Also sign out from Supabase
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.log("Error clearing stored session:", error);
+    }
+  };
+
   const handleSubmit = async () => {
     setError(null);
     setIsLoading(true);
 
     try {
       if (isLogin) {
-        // Clear any existing session first
-        await supabase.auth.signOut();
-
         const normalizedEmail = email.trim().toLowerCase();
         console.log("Signing in with email:", normalizedEmail);
         console.log("Password length:", password.length);
@@ -35,7 +54,16 @@ export default function LoginScreen() {
         const clientUrl = (supabase as any).supabaseUrl;
         console.log("Supabase client URL:", clientUrl);
 
+        // Clear any stale session data before attempting login
+        await clearStoredSession();
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
         // Login
+        console.log("Attempting login with:", {
+          email: normalizedEmail,
+          passwordLength: password.length,
+        });
+
         const { data, error } = await supabase.auth.signInWithPassword({
           email: normalizedEmail,
           password,
@@ -53,7 +81,16 @@ export default function LoginScreen() {
             : null,
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Login error details:", {
+            message: error.message,
+            status: error.status,
+            name: error.name,
+            email: normalizedEmail,
+            emailLength: normalizedEmail.length,
+          });
+          throw error;
+        }
 
         if (data.session) {
           // Navigate to main app
