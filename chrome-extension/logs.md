@@ -13,3 +13,4 @@
 | 11/12/25  | Pitch, plan, work        | 4     |
 | 11/14/25  | Supabase, mobile app     | 5     |
 | 11/17/25  | NFC reader research      | 1     |
+| 11/21/25  | Supabase realtime        | 2.5   |

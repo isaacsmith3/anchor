@@ -50,22 +50,49 @@ export default function RootLayout() {
         .on(
           "postgres_changes",
           {
-            event: "*",
+            event: "UPDATE",
             schema: "public",
             table: "blocking_sessions",
             filter: `user_id=eq.${userId}`,
           },
-          async () => {
+          async (payload) => {
+            console.log("Root layout - Session UPDATE received:", {
+              old: payload.old,
+              new: payload.new,
+              isActive: payload.new?.is_active,
+            });
             // Refetch active session when changes occur
             const {
               data: { user: currentUser },
             } = await supabase.auth.getUser();
             if (currentUser) {
-              checkActiveSession(currentUser.id);
+              await checkActiveSession(currentUser.id);
             }
           }
         )
-        .subscribe();
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "blocking_sessions",
+            filter: `user_id=eq.${userId}`,
+          },
+          async (payload) => {
+            console.log("Root layout - Session INSERT received:", {
+              isActive: payload.new?.is_active,
+            });
+            const {
+              data: { user: currentUser },
+            } = await supabase.auth.getUser();
+            if (currentUser) {
+              await checkActiveSession(currentUser.id);
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log("Root layout subscription status:", status);
+        });
     };
 
     // Check initial auth state - use getUser() to validate session with server
