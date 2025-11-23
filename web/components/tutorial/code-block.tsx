@@ -37,12 +37,16 @@ const CheckIcon = () => (
 );
 
 export function CodeBlock({ code }: { code: string }) {
-  const [icon, setIcon] = useState(CopyIcon);
+  const [Icon, setIcon] = useState(() => CopyIcon);
 
   const copy = async () => {
-    await navigator?.clipboard?.writeText(code);
-    setIcon(CheckIcon);
-    setTimeout(() => setIcon(CopyIcon), 2000);
+    try {
+      await navigator?.clipboard?.writeText(code);
+      setIcon(() => CheckIcon);
+      setTimeout(() => setIcon(() => CopyIcon), 2000);
+    } catch (error) {
+      console.error("Failed to copy code snippet to clipboard:", error);
+    }
   };
 
   return (
@@ -53,7 +57,7 @@ export function CodeBlock({ code }: { code: string }) {
         variant={"outline"}
         className="absolute right-2 top-2"
       >
-        {icon}
+        <Icon />
       </Button>
       <code className="text-xs p-3">{code}</code>
     </pre>
