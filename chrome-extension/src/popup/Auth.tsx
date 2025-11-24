@@ -16,7 +16,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
-
+    
     try {
       if (isLogin) {
         // Login
@@ -77,9 +77,8 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
   return (
     <div className="flex flex-col w-full min-w-[400px] min-h-full antialiased bg-gradient-to-b from-gray-50 to-white text-mono-black">
       <header className="px-6 py-7 text-center border-b shadow-sm bg-gradient-to-br from-mono-dark via-mono-black to-mono-dark border-mono-black text-black">
-        <div className="text-2xl mb-1">⚓</div>
         <h1 className="text-xl font-semibold mb-0.5 tracking-tight">
-          Anchor Blocker
+          Anchor ⚓
         </h1>
       </header>
 
@@ -91,7 +90,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
           <p className="text-sm text-mono-gray-muted text-center mb-8">
             {isLogin
               ? "Sign in to sync your modes across devices"
-              : "Sign up to get started with Anchor Blocker"}
+              : "Sign up to get started with Anchor"}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">

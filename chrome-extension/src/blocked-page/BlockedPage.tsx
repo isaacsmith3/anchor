@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 
 const BlockedPage: React.FC = () => {
   const [blockedSite, setBlockedSite] = useState<string>("");
-  const [isUnblocking, setIsUnblocking] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
     // Get the blocked site URL from query parameters
@@ -16,43 +16,51 @@ const BlockedPage: React.FC = () => {
     document.body.style.backgroundColor = "#000000";
     document.documentElement.style.backgroundColor = "#000000";
 
+    const checkBlockingStatus = async () => {
+      try {
+        const response = await chrome.runtime.sendMessage({
+          type: "GET_ACTIVE_MODE",
+        });
+
+        if (response.success && !response.data) {
+          const siteToVisit = site || blockedSite;
+          if (siteToVisit) {
+            window.location.href = siteToVisit;
+          }
+        }
+      } catch (error) {
+        console.error("Error checking blocking status:", error);
+        window.history.back();
+      }
+    };
+
+    checkBlockingStatus();
+
+    const handleStorageChange = (changes: any, areaName: string) => {
+      if (areaName !== "local") return;
+
+      if (
+        changes.active_mode &&
+        (changes.active_mode.newValue === null ||
+          changes.active_mode.newValue.is_active === false)
+      ) {
+        checkBlockingStatus();
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+
+    const pollInterval = setInterval(() => {
+      checkBlockingStatus();
+    }, 5000);
+
     return () => {
-      // Cleanup on unmount
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+      clearInterval(pollInterval);
       document.body.style.backgroundColor = "";
       document.documentElement.style.backgroundColor = "";
     };
-  }, []);
-
-  const handleUnblock = async () => {
-    setIsUnblocking(true);
-
-    try {
-      const response = await chrome.runtime.sendMessage({
-        type: "STOP_BLOCKING_SESSION",
-      });
-
-      if (response.success) {
-        // Redirect to the blocked site
-        if (blockedSite) {
-          // Ensure we have a protocol
-          let url = blockedSite;
-          if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            url = `https://${url}`;
-          }
-          window.location.href = url;
-        } else {
-          window.history.back();
-        }
-      } else {
-        alert("Failed to unblock. Please try again.");
-        setIsUnblocking(false);
-      }
-    } catch (error) {
-      console.error("Error unblocking:", error);
-      alert("Error unblocking site. Please try again.");
-      setIsUnblocking(false);
-    }
-  };
+  }, [blockedSite]);
 
   const handleGoBack = () => {
     window.history.back();
@@ -71,6 +79,7 @@ const BlockedPage: React.FC = () => {
           </p>
           <p className="text-base text-gray-400 leading-relaxed mb-8">
             This site is currently blocked by your active blocking mode.
+            {isChecking && <p>Checking blocking status...</p>}
           </p>
 
           <div className="flex flex-col gap-3 mb-6">
@@ -84,12 +93,12 @@ const BlockedPage: React.FC = () => {
 
           <div className="border-t border-gray-700 pt-6 text-[13px] text-gray-400">
             <p className="mb-1">Need to manage your blocked sites?</p>
-            <p>Click the Anchor extension icon in your toolbar</p>
+            <p>Open the Anchor mobile app.</p>
           </div>
         </div>
       </div>
       <style>{`
-        @keyframes slideUp {
+        @keyframes slideUp {fd
           from {
             opacity: 0;
             transform: translateY(30px);

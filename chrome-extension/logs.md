@@ -14,3 +14,5 @@
 | 11/14/25  | Supabase, mobile app     | 5     |
 | 11/17/25  | NFC reader research      | 1     |
 | 11/21/25  | Supabase realtime        | 2.5   |
+| 11/22/25  | Web app                  | 2     |
+| 11/24/25  | Extension                | 1     |
