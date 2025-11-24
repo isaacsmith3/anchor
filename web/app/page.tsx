@@ -1,6 +1,6 @@
 import { Hero } from "@/components/hero";
 import { Nav } from "@/components/nav";
-import Link from "next/link";
+import { Footer } from "@/components/footer";
 
 export default function Home() {
   return (
@@ -11,14 +11,7 @@ export default function Home() {
           <Hero />
         </div>
 
-        <footer className="w-full flex items-center justify-center border-t bg-background/70 mx-auto text-center text-lg gap-12 py-16">
-          <Link
-            className="font-bold hover:underline text-foreground transition"
-            href="/contact"
-          >
-            Contact
-          </Link>
-        </footer>
+        <Footer />
       </div>
     </main>
   );

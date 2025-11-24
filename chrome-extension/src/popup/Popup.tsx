@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { supabase, initializeSession, clearSession } from "../lib/supabase";
+import {
+  supabase,
+  initializeSession,
+  clearSession,
+  saveSession,
+} from "../lib/supabase";
 import Auth from "./Auth";
 
 interface Mode {
@@ -56,18 +61,36 @@ const Popup: React.FC = () => {
     initializeRealtimeSync();
   }, [isAuthenticated]);
 
-  // Listen for auth state changes
+  // Listen for auth state changes and token refresh
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log(
+        "Auth state changed:",
+        event,
+        session ? "session exists" : "no session"
+      );
+
       if (session) {
         setUser(session.user);
         setIsAuthenticated(true);
+
+        // Save session whenever it changes (including token refresh)
+        if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN") {
+          await saveSession({
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+          });
+          console.log("Session saved after", event);
+        }
       } else {
-        setUser(null);
-        setIsAuthenticated(false);
-        await clearSession();
+        // Only clear session if explicitly signed out
+        if (event === "SIGNED_OUT") {
+          setUser(null);
+          setIsAuthenticated(false);
+          await clearSession();
+        }
       }
     });
 
@@ -99,21 +122,29 @@ const Popup: React.FC = () => {
 
   const checkAuth = async () => {
     try {
+      // First try to restore session from storage
       const session = await initializeSession();
-      if (session) {
+      if (session && session.user) {
         setUser(session.user);
         setIsAuthenticated(true);
+        return;
+      }
+
+      // If no stored session, check if there's an active session
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+
+      if (currentSession && currentSession.user) {
+        // Save this session to storage for future use
+        await saveSession({
+          access_token: currentSession.access_token,
+          refresh_token: currentSession.refresh_token,
+        });
+        setUser(currentSession.user);
+        setIsAuthenticated(true);
       } else {
-        const {
-          data: { session: currentSession },
-        } = await supabase.auth.getSession();
-        if (currentSession) {
-          setUser(currentSession.user);
-          setIsAuthenticated(true);
-          await clearSession(); // Clear old storage format
-        } else {
-          setIsAuthenticated(false);
-        }
+        setIsAuthenticated(false);
       }
     } catch (error) {
       console.error("Error checking auth:", error);
@@ -435,9 +466,7 @@ const Popup: React.FC = () => {
           Sign Out
         </button>
         <div className="text-2xl mb-1">⚓</div>
-        <h1 className="text-xl font-semibold mb-0.5 tracking-tight">
-          Anchor Blocker
-        </h1>
+        <h1 className="text-xl font-semibold mb-0.5 tracking-tight">Anchor</h1>
         {user && <p className="text-xs text-gray-400 mt-1">{user.email}</p>}
       </header>
 

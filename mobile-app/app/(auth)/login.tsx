@@ -138,7 +138,7 @@ export default function LoginScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.emoji}>⚓</Text>
-        <Text style={styles.title}>Anchor Blocker</Text>
+        <Text style={styles.title}>Anchor</Text>
       </View>
 
       <View style={styles.form}>
@@ -148,7 +148,7 @@ export default function LoginScreen() {
         <Text style={styles.description}>
           {isLogin
             ? "Sign in to manage your blocking sessions"
-            : "Sign up to get started with Anchor Blocker"}
+            : "Sign up to get started with Anchor"}
         </Text>
 
         {error && (

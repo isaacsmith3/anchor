@@ -1,7 +1,7 @@
 // Background service worker for Anchor Website Blocker
 console.log("Anchor Website Blocker background service worker loaded!");
 
-import { supabase, getStoredSession } from "./lib/supabase";
+import { supabase, getStoredSession, saveSession } from "./lib/supabase";
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -162,10 +162,46 @@ async function getCurrentUserSession() {
         access_token: storedSession.access_token,
         refresh_token: storedSession.refresh_token,
       });
+
       if (error) {
-        console.error("Error setting session:", error);
-        return null;
+        // If session is invalid, try refreshing the token
+        if (
+          error.message?.includes("expired") ||
+          error.message?.includes("invalid")
+        ) {
+          console.log(
+            "Session expired in background, attempting to refresh token..."
+          );
+          const { data: refreshData, error: refreshError } =
+            await supabase.auth.refreshSession({
+              refresh_token: storedSession.refresh_token,
+            });
+
+          if (refreshError || !refreshData.session) {
+            console.error(
+              "Error refreshing session in background:",
+              refreshError
+            );
+            return null;
+          }
+
+          // Save the refreshed session
+          await saveSession({
+            access_token: refreshData.session.access_token,
+            refresh_token: refreshData.session.refresh_token,
+          });
+
+          console.log(
+            "Session refreshed successfully. User ID:",
+            refreshData.session?.user?.id
+          );
+          return refreshData.session;
+        } else {
+          console.error("Error setting session:", error);
+          return null;
+        }
       }
+
       console.log(
         "Session restored successfully. User ID:",
         data.session?.user?.id

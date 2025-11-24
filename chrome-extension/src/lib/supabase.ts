@@ -96,11 +96,48 @@ export async function initializeSession() {
         access_token: storedSession.access_token,
         refresh_token: storedSession.refresh_token,
       });
+
       if (error) {
-        console.error("Error restoring session:", error);
-        await clearSession();
-        return null;
+        // If session is invalid, try refreshing the token
+        if (
+          error.message?.includes("expired") ||
+          error.message?.includes("invalid")
+        ) {
+          console.log("Session expired, attempting to refresh token...");
+          const { data: refreshData, error: refreshError } =
+            await supabase.auth.refreshSession({
+              refresh_token: storedSession.refresh_token,
+            });
+
+          if (refreshError || !refreshData.session) {
+            console.error("Error refreshing session:", refreshError);
+            await clearSession();
+            return null;
+          }
+
+          // Save the refreshed session
+          await saveSession({
+            access_token: refreshData.session.access_token,
+            refresh_token: refreshData.session.refresh_token,
+          });
+
+          return refreshData.session;
+        } else {
+          console.error("Error restoring session:", error);
+          await clearSession();
+          return null;
+        }
       }
+
+      // If session is valid, check if it needs refresh and update storage
+      if (data.session) {
+        // Save the session again to ensure it's up to date
+        await saveSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+      }
+
       return data.session;
     } catch (err) {
       console.error("Error restoring session:", err);
