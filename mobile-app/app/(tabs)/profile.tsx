@@ -9,9 +9,11 @@ import {
 } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { router } from "expo-router";
+import { Colors } from "@/constants/theme";
 
 export default function ProfileScreen() {
   const [hasActiveSession, setHasActiveSession] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -23,6 +25,8 @@ export default function ProfileScreen() {
           data: { user },
         } = await supabase.auth.getUser();
         if (!user || !isMounted) return;
+
+        setUserEmail(user.email || null);
 
         const { data, error } = await supabase
           .from("blocking_sessions")
@@ -51,7 +55,6 @@ export default function ProfileScreen() {
       } = await supabase.auth.getUser();
       if (!user || !isMounted) return;
 
-      // Listen for session changes filtered by user_id
       channel = supabase
         .channel(`profile_session_check_${user.id}`)
         .on(
@@ -62,12 +65,7 @@ export default function ProfileScreen() {
             table: "blocking_sessions",
             filter: `user_id=eq.${user.id}`,
           },
-          (payload) => {
-            console.log("Profile - Session UPDATE received:", {
-              old: payload.old,
-              new: payload.new,
-              isActive: payload.new?.is_active,
-            });
+          () => {
             if (isMounted) {
               checkActiveSession();
             }
@@ -81,18 +79,13 @@ export default function ProfileScreen() {
             table: "blocking_sessions",
             filter: `user_id=eq.${user.id}`,
           },
-          (payload) => {
-            console.log("Profile - Session INSERT received:", {
-              isActive: payload.new?.is_active,
-            });
+          () => {
             if (isMounted) {
               checkActiveSession();
             }
           }
         )
-        .subscribe((status) => {
-          console.log("Profile subscription status:", status);
-        });
+        .subscribe();
     };
 
     setupSubscription();
@@ -106,6 +99,7 @@ export default function ProfileScreen() {
   }, []);
 
   const isDarkMode = hasActiveSession;
+  const colors = isDarkMode ? Colors.dark : Colors.light;
 
   const handleSignOut = async () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -125,34 +119,35 @@ export default function ProfileScreen() {
   };
 
   return (
-    <ScrollView style={[styles.container, isDarkMode && styles.containerDark]}>
-      <View style={[styles.content, isDarkMode && styles.contentDark]}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={[styles.logo, { color: colors.text }]}>ANCHOR</Text>
+      </View>
+
+      <View style={styles.content}>
+        {/* Profile Section */}
         <View style={styles.section}>
-          <Text
-            style={[styles.sectionTitle, isDarkMode && styles.sectionTitleDark]}
-          >
-            Profile
-          </Text>
-          <Text
-            style={[
-              styles.sectionDescription,
-              isDarkMode && styles.sectionDescriptionDark,
-            ]}
-          >
-            Manage your account settings
-          </Text>
+          {userEmail && (
+            <Text style={[styles.email, { color: colors.textMuted }]}>
+              {userEmail}
+            </Text>
+          )}
         </View>
 
+        {/* Sign Out Button */}
         <TouchableOpacity
-          style={[styles.signOutButton, isDarkMode && styles.signOutButtonDark]}
+          style={[
+            styles.signOutButton,
+            {
+              borderColor: colors.text,
+            },
+          ]}
           onPress={handleSignOut}
         >
-          <Text
-            style={[
-              styles.signOutButtonText,
-              isDarkMode && styles.signOutButtonTextDark,
-            ]}
-          >
+          <Text style={[styles.signOutButtonText, { color: colors.text }]}>
             Sign Out
           </Text>
         </TouchableOpacity>
@@ -164,65 +159,45 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
   },
   header: {
-    backgroundColor: "#fff",
-    padding: 20,
-    paddingTop: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
+    paddingTop: 70,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+    alignItems: "center",
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "600",
-    color: "#000",
+  logo: {
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: 2,
   },
   content: {
-    padding: 20,
-    paddingTop: 100,
+    padding: 24,
+    paddingTop: 40,
   },
   section: {
-    marginBottom: 32,
+    marginBottom: 40,
+    marginTop: 40,
+    alignItems: "center",
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "600",
-    color: "#000",
     marginBottom: 8,
   },
-  sectionDescription: {
-    fontSize: 14,
-    color: "#666",
+  email: {
+    fontSize: 15,
   },
   signOutButton: {
-    backgroundColor: "#ef4444",
+    borderWidth: 2,
     borderRadius: 8,
     padding: 16,
     alignItems: "center",
-    marginTop: 24,
+    alignSelf: "center",
+    width: "50%",
   },
   signOutButtonText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
-  },
-  containerDark: {
-    backgroundColor: "#000000",
-  },
-  contentDark: {
-    backgroundColor: "#000000",
-  },
-  sectionTitleDark: {
-    color: "#ffffff",
-  },
-  sectionDescriptionDark: {
-    color: "#9ca3af",
-  },
-  signOutButtonDark: {
-    backgroundColor: "#ef4444",
-  },
-  signOutButtonTextDark: {
-    color: "#ffffff",
   },
 });
