@@ -14,7 +14,7 @@ interface Mode {
   created_at: string;
 }
 
-type View = "blocking" | "modes";
+type View = "blocking" | "modes" | "profile";
 
 const Popup: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -452,60 +452,90 @@ const Popup: React.FC = () => {
       }`}
     >
       <header
-        className={`px-6 py-7 text-center border-b shadow-sm transition-colors duration-300 relative ${
+        className={`px-6 py-7 text-center shadow-sm transition-colors duration-300 relative ${
           isDarkMode
             ? "bg-black border-gray-700 text-white"
             : "bg-gradient-to-br from-mono-dark via-mono-black to-mono-dark border-mono-black text-black"
         }`}
       >
-        <button
-          onClick={handleSignOut}
-          className="absolute top-3 right-3 text-xs text-gray-400 hover:text-white transition-colors"
-          title="Sign out"
-        >
-          Sign Out
-        </button>
-        <div className="text-2xl mb-1">⚓</div>
-        <h1 className="text-xl font-semibold mb-0.5 tracking-tight">Anchor</h1>
-        {user && <p className="text-xs text-gray-400 mt-1">{user.email}</p>}
+        <h1 className="text-xl font-bold tracking-tight">ANCHOR</h1>
       </header>
 
       {/* Tab Navigation */}
       <div
-        className={`flex border-b transition-colors duration-300 ${
-          isDarkMode
-            ? "border-gray-700 bg-black"
-            : "border-mono-gray-border bg-white"
-        }`}
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "32px",
+          padding: "16px 0",
+        }}
       >
         <button
-          className={`flex-1 px-5 py-3.5 text-xs font-medium tracking-wider uppercase transition-all relative ${
-            currentView === "blocking"
-              ? isDarkMode
-                ? "bg-black text-white border-b-2 border-accent-blue"
-                : "bg-white text-mono-black border-b-2 border-accent-blue"
-              : isDarkMode
-              ? "bg-black text-gray-400 hover:bg-gray-900 hover:text-white"
-              : "bg-gray-50 text-mono-gray-text hover:bg-white hover:text-mono-black"
-          }`}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "12px",
+            letterSpacing: "0.05em",
+            textTransform: "uppercase",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color:
+              currentView === "blocking"
+                ? isDarkMode
+                  ? "#ffffff"
+                  : "#1a1a1a"
+                : isDarkMode
+                ? "#9ca3af"
+                : "#666666",
+            fontWeight: currentView === "blocking" ? 700 : 500,
+          }}
           onClick={() => setCurrentView("blocking")}
         >
           Blocking
+          <span
+            style={{
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              backgroundColor:
+                currentView === "blocking"
+                  ? isDarkMode
+                    ? "#ffffff"
+                    : "#0f0f0f"
+                  : "transparent",
+            }}
+          />
         </button>
         <button
-          className={`flex-1 px-5 py-3.5 text-xs font-medium tracking-wider uppercase transition-all relative ${
-            currentView === "modes"
-              ? isDarkMode
-                ? "bg-black text-white border-b-2 border-accent-purple"
-                : "bg-white text-mono-black border-b-2 border-accent-purple"
-              : activeMode
-              ? isDarkMode
-                ? "bg-black text-gray-600 cursor-not-allowed opacity-60"
-                : "bg-gray-50 text-mono-gray-muted cursor-not-allowed opacity-60"
-              : isDarkMode
-              ? "bg-black text-gray-400 hover:bg-gray-900 hover:text-white"
-              : "bg-gray-50 text-mono-gray-text hover:bg-white hover:text-mono-black"
-          }`}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "12px",
+            letterSpacing: "0.05em",
+            textTransform: "uppercase",
+            background: "none",
+            border: "none",
+            cursor: activeMode ? "not-allowed" : "pointer",
+            opacity: activeMode ? 0.6 : 1,
+            color:
+              currentView === "modes"
+                ? isDarkMode
+                  ? "#ffffff"
+                  : "#1a1a1a"
+                : activeMode
+                ? isDarkMode
+                  ? "#4b5563"
+                  : "#999999"
+                : isDarkMode
+                ? "#9ca3af"
+                : "#666666",
+            fontWeight: currentView === "modes" ? 700 : 500,
+          }}
           onClick={() => {
             if (!activeMode) {
               setCurrentView("modes");
@@ -523,6 +553,79 @@ const Popup: React.FC = () => {
           }
         >
           Modes
+          <span
+            style={{
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              backgroundColor:
+                currentView === "modes"
+                  ? isDarkMode
+                    ? "#ffffff"
+                    : "#0f0f0f"
+                  : "transparent",
+            }}
+          />
+        </button>
+
+        <button
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "12px",
+            letterSpacing: "0.05em",
+            textTransform: "uppercase",
+            background: "none",
+            border: "none",
+            cursor: activeMode ? "not-allowed" : "pointer",
+            opacity: activeMode ? 0.6 : 1,
+            color:
+              currentView === "profile"
+                ? isDarkMode
+                  ? "#ffffff"
+                  : "#1a1a1a"
+                : activeMode
+                ? isDarkMode
+                  ? "#4b5563"
+                  : "#999999"
+                : isDarkMode
+                ? "#9ca3af"
+                : "#666666",
+            fontWeight: currentView === "profile" ? 700 : 500,
+          }}
+          onClick={() => {
+            if (!activeMode) {
+              setCurrentView("profile");
+            } else {
+              alert(
+                `Cannot access profile page while a blocking session is active. Please stop the session with "${activeMode.name}" first.`
+              );
+            }
+          }}
+          disabled={!!activeMode}
+          title={
+            activeMode
+              ? `Stop "${activeMode.name}" session to access profile`
+              : undefined
+          }
+        >
+          Profile
+          <span
+            style={{
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              backgroundColor:
+                currentView === "profile"
+                  ? isDarkMode
+                    ? "#ffffff"
+                    : "#0f0f0f"
+                  : "transparent",
+              opacity: activeMode ? 0.6 : 1,
+            }}
+          />
         </button>
       </div>
 
@@ -689,7 +792,7 @@ const Popup: React.FC = () => {
             </section>
           )}
         </>
-      ) : (
+      ) : currentView === "modes" ? (
         <>
           <section className="px-6 py-6 border-b border-mono-gray-border bg-white">
             <h3 className="text-[11px] font-bold mb-6 tracking-wider uppercase text-mono-black flex items-center gap-2">
@@ -856,7 +959,21 @@ const Popup: React.FC = () => {
             </div>
           </section>
         </>
-      )}
+      ) : currentView === "profile" ? (
+        <section className="px-6 py-6 border-mono-gray-border bg-white">
+          <div className="flex flex-col items-center justify-between">
+            <p className="text-mono-black text-sm font-medium mb-6">
+              {user?.email}
+            </p>
+            <button
+              className="px-4 py-3 border-2 border-accent-purple rounded-lg bg-white text-accent-purple font-semibold text-[13px] tracking-wide transition-all hover:bg-accent-purple hover:text-mono-black hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 disabled:bg-mono-gray-light disabled:text-mono-gray-text disabled:border-mono-gray-input disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+              onClick={handleSignOut}
+            >
+              Sign Out
+            </button>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 };
