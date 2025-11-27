@@ -7,11 +7,14 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from "react-native";
 import { supabase } from "@/lib/supabase";
 import SessionCard from "@/components/SessionCard";
 import { router, useFocusEffect } from "expo-router";
 import { Colors } from "@/constants/theme";
+
+// TODO: get rid of any imports
 
 interface BlockingSession {
   id: string;
@@ -220,6 +223,11 @@ export default function HomeScreen() {
           />
         ) : (
           <View style={styles.emptyState}>
+            <Image
+              source={require("@/assets/images/anchor-icon.png")}
+              style={styles.anchorLogo}
+              accessibilityLabel="Anchor Logo"
+            />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
               No Active Session
             </Text>
@@ -291,5 +299,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: "center",
     lineHeight: 24,
+  },
+  anchorLogo: {
+    width: 100,
+    height: 100,
+    alignSelf: "center",
+    marginBottom: 24,
   },
 });
