@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Brick Website Blocker",
+  "name": "Anchor",
   "version": "1.0.0",
-  "description": "Block websites with NFC friction",
+  "description": "Stay anchored to what matters.",
   "permissions": [
     "declarativeNetRequest",
     "declarativeNetRequestWithHostAccess",
