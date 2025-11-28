@@ -2,14 +2,6 @@
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
@@ -57,64 +49,101 @@ export function SignUpForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Sign up</CardTitle>
-          <CardDescription>Create a new account</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignUp}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+    <div className={cn("flex flex-col gap-8", className)} {...props}>
+      {/* Header */}
+      <div className="text-center">
+        <Link href="/" className="text-xl font-bold tracking-wider">
+          ANCHOR
+        </Link>
+      </div>
+
+      {/* Form Card */}
+      <div className="border border-border rounded-xl p-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold mb-2">Create account</h1>
+          <p className="text-muted-foreground text-sm">
+            Sign up to get started with Anchor
+          </p>
+        </div>
+
+        <form onSubmit={handleSignUp}>
+          <div className="flex flex-col gap-6">
+            {error && (
+              <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  {error}
+                </p>
               </div>
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                </div>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="repeat-password">Repeat Password</Label>
-                </div>
-                <Input
-                  id="repeat-password"
-                  type="password"
-                  required
-                  value={repeatPassword}
-                  onChange={(e) => setRepeatPassword(e.target.value)}
-                />
-              </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating an account..." : "Sign up"}
-              </Button>
+            )}
+
+            <div className="grid gap-2">
+              <Label htmlFor="email" className="text-sm font-semibold">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-12 border-2 focus:border-foreground"
+              />
             </div>
-            <div className="mt-4 text-center text-sm">
-              Already have an account?{" "}
-              <Link href="/auth/login" className="underline underline-offset-4">
-                Login
-              </Link>
+
+            <div className="grid gap-2">
+              <Label htmlFor="password" className="text-sm font-semibold">
+                Password
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Create a password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-12 border-2 focus:border-foreground"
+              />
             </div>
-          </form>
-        </CardContent>
-      </Card>
+
+            <div className="grid gap-2">
+              <Label
+                htmlFor="repeat-password"
+                className="text-sm font-semibold"
+              >
+                Confirm Password
+              </Label>
+              <Input
+                id="repeat-password"
+                type="password"
+                placeholder="Repeat your password"
+                required
+                value={repeatPassword}
+                onChange={(e) => setRepeatPassword(e.target.value)}
+                className="h-12 border-2 focus:border-foreground"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-12 border-2 border-foreground bg-foreground text-background font-semibold rounded-lg transition-all hover:bg-transparent hover:text-foreground disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isLoading ? "Creating account..." : "Sign Up"}
+            </button>
+          </div>
+
+          <div className="mt-6 text-center text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <Link
+              href="/auth/login"
+              className="text-foreground font-semibold hover:underline"
+            >
+              Sign in
+            </Link>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
