@@ -15,6 +15,33 @@ export const unstable_settings = {
   anchor: "(tabs)",
 };
 
+// Custom themes matching the Anchor design system
+const AnchorLightTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: "#0f0f0f",
+    background: "#ffffff",
+    card: "#ffffff",
+    text: "#0f0f0f",
+    border: "#e5e5e5",
+    notification: "#0f0f0f",
+  },
+};
+
+const AnchorDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: "#ffffff",
+    background: "#0f0f0f",
+    card: "#0f0f0f",
+    text: "#ffffff",
+    border: "#262626",
+    notification: "#ffffff",
+  },
+};
+
 export default function RootLayout() {
   const systemColorScheme = useColorScheme();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -39,12 +66,10 @@ export default function RootLayout() {
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
     const setupChannel = async (userId: string) => {
-      // Unsubscribe from existing channel if any
       if (channel) {
         await channel.unsubscribe();
       }
 
-      // Create new channel for this user
       channel = supabase
         .channel(`active_session_check_${userId}`)
         .on(
@@ -55,13 +80,7 @@ export default function RootLayout() {
             table: "blocking_sessions",
             filter: `user_id=eq.${userId}`,
           },
-          async (payload) => {
-            console.log("Root layout - Session UPDATE received:", {
-              old: payload.old,
-              new: payload.new,
-              isActive: payload.new?.is_active,
-            });
-            // Refetch active session when changes occur
+          async () => {
             const {
               data: { user: currentUser },
             } = await supabase.auth.getUser();
@@ -78,10 +97,7 @@ export default function RootLayout() {
             table: "blocking_sessions",
             filter: `user_id=eq.${userId}`,
           },
-          async (payload) => {
-            console.log("Root layout - Session INSERT received:", {
-              isActive: payload.new?.is_active,
-            });
+          async () => {
             const {
               data: { user: currentUser },
             } = await supabase.auth.getUser();
@@ -90,36 +106,26 @@ export default function RootLayout() {
             }
           }
         )
-        .subscribe((status) => {
-          console.log("Root layout subscription status:", status);
-        });
+        .subscribe();
     };
 
-    // Check initial auth state - use getUser() to validate session with server
     supabase.auth
       .getUser()
       .then(async ({ data: { user }, error: authError }) => {
         if (authError || !user) {
-          // If there's an error or no user, clear any stale session
-          supabase.auth.signOut().catch(() => {
-            // Ignore errors during signout
-          });
+          supabase.auth.signOut().catch(() => {});
           setIsAuthenticated(false);
           setHasActiveSession(false);
         } else {
           setIsAuthenticated(true);
-          // Check for active session
           await checkActiveSession(user.id);
-          // Set up realtime channel
           await setupChannel(user.id);
         }
       });
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Validate the session by checking if user exists
       if (session) {
         const {
           data: { user },
@@ -156,7 +162,9 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+    <ThemeProvider
+      value={colorScheme === "dark" ? AnchorDarkTheme : AnchorLightTheme}
+    >
       <Stack
         screenOptions={{
           headerShown: false,

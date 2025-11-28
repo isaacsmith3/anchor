@@ -37,8 +37,15 @@
           "dark": {
             "backgroundColor": "#000000"
           }
+        },
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "Hold your phone near the Brick to unlock.",
+          "selectIdentifiers": [], 
+          "includeNdefEntitlement": true
         }
       ]
+
     ],
     "experiments": {
       "typedRoutes": true,

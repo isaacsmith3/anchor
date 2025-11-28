@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DotGrid from "@/components/DotGrid";
+import Link from "next/link";
 
 export function Hero() {
   const [isDark, setIsDark] = useState(false);

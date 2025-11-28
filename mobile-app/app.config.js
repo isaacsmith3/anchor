@@ -33,8 +33,14 @@ module.exports = {
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
+      bundleIdentifier: "com.anonymous.mobileapp",
+      infoPlist: {
+        NFCReaderUsageDescription:
+          "Hold your phone near your Anchor device to unlock",
+      },
     },
     android: {
+      package: "com.anonymous.mobileapp",
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",
         foregroundImage: "./assets/images/android-icon-foreground.png",
@@ -60,6 +66,14 @@ module.exports = {
           dark: {
             backgroundColor: "#000000",
           },
+        },
+      ],
+      [
+        "react-native-nfc-manager",
+        {
+          nfcPermission: "Hold your phone near the Brick to unlock.",
+          selectIdentifiers: [],
+          includeNdefEntitlement: true,
         },
       ],
     ],

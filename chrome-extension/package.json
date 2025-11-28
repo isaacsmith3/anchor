@@ -1,7 +1,7 @@
 {
-  "name": "brick-website-blocker",
+  "name": "anchor",
   "version": "1.0.0",
-  "description": "Block websites with NFC friction",
+  "description": "Stay anchored to what matters.",
   "main": "index.js",
   "scripts": {
     "build": "webpack --mode production",
@@ -10,8 +10,8 @@
   },
   "keywords": [
     "chrome-extension",
-    "website-blocker",
-    "nfc"
+    "anchor",
+    "website-blocker"
   ],
   "author": "",
   "license": "MIT",

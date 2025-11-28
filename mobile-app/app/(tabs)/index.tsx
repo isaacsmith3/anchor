@@ -7,10 +7,16 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Image,
+  Platform,
 } from "react-native";
 import { supabase } from "@/lib/supabase";
 import SessionCard from "@/components/SessionCard";
 import { router, useFocusEffect } from "expo-router";
+import { Colors } from "@/constants/theme";
+import NfcManager, { NfcTech } from "react-native-nfc-manager";
+
+// TODO: get rid of any imports
 
 interface BlockingSession {
   id: string;
@@ -25,18 +31,41 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isStopping, setIsStopping] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [isNfcSupported, setIsNfcSupported] = useState<boolean | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
 
-  // Refresh when screen comes into focus (e.g., when switching back to app)
+  const isDarkMode = !!session;
+  const colors = isDarkMode ? Colors.dark : Colors.light;
+
+  // Initialize NFC on mount
+  useEffect(() => {
+    const initNfc = async () => {
+      try {
+        const supported = await NfcManager.isSupported();
+        setIsNfcSupported(supported);
+        if (supported) {
+          await NfcManager.start();
+        }
+      } catch (error) {
+        console.warn("NFC initialization error:", error);
+        setIsNfcSupported(false);
+      }
+    };
+    initNfc();
+
+    return () => {
+      NfcManager.cancelTechnologyRequest().catch(() => {});
+    };
+  }, []);
+
   useFocusEffect(
     React.useCallback(() => {
-      console.log("Screen focused, refreshing session...");
       fetchActiveSession();
     }, [])
   );
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    console.log("Manual refresh triggered");
     await fetchActiveSession();
     setRefreshing(false);
   }, []);
@@ -48,9 +77,7 @@ export default function HomeScreen() {
         error: userError,
       } = await supabase.auth.getUser();
       if (!user || userError) {
-        console.log("No authenticated user found, redirecting to login");
         setIsLoading(false);
-        // Clear any stale session and redirect
         await supabase.auth.signOut();
         router.replace("/(auth)/login");
         return;
@@ -65,7 +92,6 @@ export default function HomeScreen() {
 
       if (error) {
         if (error.code === "PGRST116") {
-          // No active session found
           setSession(null);
         } else {
           console.error("Error fetching session:", error);
@@ -80,7 +106,77 @@ export default function HomeScreen() {
     }
   };
 
+  // Verify NFC tap before allowing session deactivation
+  const verifyNfcTap = async (): Promise<boolean> => {
+    // Skip NFC on web or unsupported devices
+    if (Platform.OS === "web" || !isNfcSupported) {
+      return true;
+    }
+
+    try {
+      setIsScanning(true);
+
+      // Request NFC technology - this will prompt the user to tap
+      await NfcManager.requestTechnology(NfcTech.Ndef);
+
+      // Read the tag to verify tap occurred
+      const tag = await NfcManager.getTag();
+
+      if (tag?.id) {
+        // Successfully read an NFC tag
+        // You could extend this to verify against a registered tag ID
+        return true;
+      }
+
+      return false;
+    } catch (error: any) {
+      // User cancelled or timeout
+      if (error.message?.includes("cancelled")) {
+        return false;
+      }
+      console.warn("NFC error:", error);
+      return false;
+    } finally {
+      setIsScanning(false);
+      NfcManager.cancelTechnologyRequest().catch(() => {});
+    }
+  };
+
   const deactivateSession = async (sessionId: string) => {
+    // First, require NFC tap verification
+    if (isNfcSupported && Platform.OS !== "web") {
+      Alert.alert(
+        "Tap to Unlock",
+        "Hold your phone near your Anchor device to stop the session",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Ready to Tap",
+            onPress: async () => {
+              const verified = await verifyNfcTap();
+              if (verified) {
+                await performDeactivation(sessionId);
+              } else {
+                Alert.alert(
+                  "NFC Required",
+                  "Please tap your Anchor device to stop the session"
+                );
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    // Fallback for devices without NFC
+    await performDeactivation(sessionId);
+  };
+
+  const performDeactivation = async (sessionId: string) => {
     setIsStopping(true);
     try {
       const { error } = await (supabase.from("blocking_sessions") as any)
@@ -108,30 +204,16 @@ export default function HomeScreen() {
     let isMounted = true;
 
     const setupRealtimeSubscription = async () => {
-      // Get the current user first
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user || !isMounted) {
-        console.log(
-          "No user found or component unmounted, skipping realtime subscription"
-        );
-        return;
-      }
+      if (!user || !isMounted) return;
 
-      console.log("Setting up realtime subscription for user:", user.id);
-
-      // First fetch the current session
       await fetchActiveSession();
 
-      // Check if component is still mounted after fetch
-      if (!isMounted) {
-        console.log("Component unmounted after fetch, skipping subscription");
-        return;
-      }
+      if (!isMounted) return;
 
-      // Set up real-time subscription filtered by user_id
       const channelName = `blocking_sessions_changes_${user.id}`;
       subscription = supabase
         .channel(channelName)
@@ -144,18 +226,8 @@ export default function HomeScreen() {
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
-            console.log("🔔 Realtime INSERT event received:", {
-              payload,
-              newRecord: payload.new,
-              isActive: payload.new?.is_active,
-              userId: payload.new?.user_id,
-            });
-            // Only refetch if it's an active session
             if (payload.new?.is_active && isMounted) {
-              console.log("✅ New active session detected, fetching...");
               fetchActiveSession();
-            } else {
-              console.log("⚠️ Session is not active, ignoring");
             }
           }
         )
@@ -168,46 +240,14 @@ export default function HomeScreen() {
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
-            console.log("🔔 Realtime UPDATE event received:", {
-              old: payload.old,
-              new: payload.new,
-              eventType: payload.eventType,
-              fullPayload: JSON.stringify(payload, null, 2),
-            });
-            if (!isMounted) {
-              console.log("⚠️ Component unmounted, ignoring UPDATE");
-              return;
-            }
+            if (!isMounted) return;
 
-            // Check if session was deactivated
             const wasActive = payload.old?.is_active === true;
-            const isNowActive = payload.new?.is_active === true;
             const isNowInactive = payload.new?.is_active === false;
 
-            console.log("Session state change:", {
-              wasActive,
-              isNowActive,
-              isNowInactive,
-              oldIsActive: payload.old?.is_active,
-              newIsActive: payload.new?.is_active,
-            });
-
             if (isNowInactive && wasActive) {
-              console.log(
-                "❌ Session deactivated (was active, now inactive), clearing..."
-              );
               setSession(null);
-            } else if (isNowActive) {
-              console.log(
-                "✅ Session activated/updated, fetching latest data..."
-              );
-              // Session was activated or updated, refetch to get latest data
-              fetchActiveSession();
             } else {
-              console.log(
-                "ℹ️ Session update (no active state change), refetching to be safe..."
-              );
-              // Refetch to ensure we have the latest state
               fetchActiveSession();
             }
           }
@@ -220,31 +260,13 @@ export default function HomeScreen() {
             table: "blocking_sessions",
             filter: `user_id=eq.${user.id}`,
           },
-          (payload) => {
-            console.log("Realtime DELETE - session removed:", payload.old);
+          () => {
             if (isMounted) {
               setSession(null);
             }
           }
         )
-        .subscribe((status, err) => {
-          console.log("Realtime subscription status:", status);
-          if (err) {
-            console.error("❌ Realtime subscription error:", err);
-          }
-          if (status === "SUBSCRIBED") {
-            console.log(
-              "✅ Successfully subscribed to blocking session changes for user:",
-              user.id
-            );
-          } else if (status === "CHANNEL_ERROR") {
-            console.error("❌ Channel error - subscription failed");
-          } else if (status === "TIMED_OUT") {
-            console.error("❌ Subscription timed out");
-          } else if (status === "CLOSED") {
-            console.log("⚠️ Subscription closed");
-          }
-        });
+        .subscribe();
     };
 
     setupRealtimeSubscription();
@@ -252,7 +274,6 @@ export default function HomeScreen() {
     return () => {
       isMounted = false;
       if (subscription) {
-        console.log("Unsubscribing from realtime channel");
         subscription.unsubscribe();
       }
     };
@@ -260,28 +281,32 @@ export default function HomeScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0066ff" />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <ActivityIndicator size="large" color={colors.text} />
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+            Loading...
+          </Text>
         </View>
       </View>
     );
   }
 
-  const isDarkMode = !!session;
-
   return (
     <ScrollView
-      style={[styles.container, isDarkMode && styles.containerDark]}
+      style={[styles.container, { backgroundColor: colors.background }]}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor={isDarkMode ? "#fff" : undefined}
+          tintColor={colors.text}
         />
       }
     >
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={[styles.logo, { color: colors.text }]}>ANCHOR</Text>
+      </View>
 
       <View style={styles.content}>
         {session ? (
@@ -289,19 +314,20 @@ export default function HomeScreen() {
             session={session}
             onStop={deactivateSession}
             isLoading={isStopping}
+            isScanning={isScanning}
             isDarkMode={isDarkMode}
           />
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>📋</Text>
-            <Text
-              style={[styles.emptyTitle, isDarkMode && styles.emptyTitleDark]}
-            >
+            <Image
+              source={require("@/assets/images/anchor-icon.png")}
+              style={styles.anchorLogo}
+              accessibilityLabel="Anchor Logo"
+            />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
               No Active Session
             </Text>
-            <Text
-              style={[styles.emptyText, isDarkMode && styles.emptyTextDark]}
-            >
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
               Start a blocking session from your browser extension to see it
               here.
             </Text>
@@ -315,47 +341,21 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  containerDark: {
-    backgroundColor: "#000000",
   },
   header: {
-    backgroundColor: "#fff",
-    padding: 20,
-    paddingTop: 60,
-    flexDirection: "row",
-    justifyContent: "space-between",
+    paddingTop: 70,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
     alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
   },
-  headerDark: {
-    backgroundColor: "#000000",
-    borderBottomColor: "#333333",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "600",
-    color: "#000",
-  },
-  titleDark: {
-    color: "#ffffff",
-  },
-  signOutButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  signOutText: {
-    color: "#666",
-    fontSize: 14,
-  },
-  signOutTextDark: {
-    color: "#9ca3af",
+  logo: {
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: 2,
   },
   content: {
-    padding: 20,
-    paddingTop: 100,
+    padding: 24,
+    paddingTop: 20,
   },
   loadingContainer: {
     flex: 1,
@@ -364,37 +364,42 @@ const styles = StyleSheet.create({
     paddingTop: 100,
   },
   loadingText: {
-    marginTop: 12,
-    color: "#666",
-    fontSize: 16,
+    marginTop: 16,
+    fontSize: 15,
   },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 100,
-    paddingHorizontal: 40,
+    paddingTop: 80,
+    paddingHorizontal: 32,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
   },
   emptyEmoji: {
-    fontSize: 64,
-    marginBottom: 16,
+    fontSize: 36,
   },
   emptyTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "600",
-    color: "#000",
-    marginBottom: 8,
+    marginBottom: 12,
     textAlign: "center",
   },
-  emptyTitleDark: {
-    color: "#ffffff",
-  },
   emptyText: {
-    fontSize: 16,
-    color: "#666",
+    fontSize: 15,
     textAlign: "center",
     lineHeight: 24,
   },
-  emptyTextDark: {
-    color: "#9ca3af",
+  anchorLogo: {
+    width: 100,
+    height: 100,
+    alignSelf: "center",
+    marginBottom: 24,
   },
 });

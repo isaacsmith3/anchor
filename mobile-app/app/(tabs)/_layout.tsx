@@ -1,12 +1,72 @@
 import { Tabs } from "expo-router";
 import React, { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import * as Haptics from "expo-haptics";
 
-import { HapticTab } from "@/components/haptic-tab";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import Feather from "@expo/vector-icons/Feather";
 import { supabase } from "@/lib/supabase";
+import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+
+function CustomTabBar({
+  state,
+  descriptors,
+  navigation,
+  colors,
+}: BottomTabBarProps & { colors: (typeof Colors)["light"] }) {
+  return (
+    <View style={[styles.tabBar, { backgroundColor: colors.background }]}>
+      {state.routes.map((route, index) => {
+        const { options } = descriptors[route.key];
+        const rawLabel = options.tabBarLabel ?? options.title ?? route.name;
+        const label =
+          typeof rawLabel === "function" ? route.name : String(rawLabel);
+        const isFocused = state.index === index;
+
+        const onPress = () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          const event = navigation.emit({
+            type: "tabPress",
+            target: route.key,
+            canPreventDefault: true,
+          });
+
+          if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(route.name, route.params);
+          }
+        };
+
+        return (
+          <TouchableOpacity
+            key={route.key}
+            onPress={onPress}
+            style={styles.tabItem}
+          >
+            <Text
+              style={[
+                styles.tabLabel,
+                {
+                  color: isFocused ? colors.text : colors.textMuted,
+                  fontWeight: isFocused ? "700" : "500",
+                },
+              ]}
+            >
+              {label.toUpperCase()}
+            </Text>
+            <View
+              style={[
+                styles.dot,
+                {
+                  backgroundColor: isFocused ? colors.text : "transparent",
+                },
+              ]}
+            />
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
 
 export default function TabLayout() {
   const systemColorScheme = useColorScheme();
@@ -32,7 +92,6 @@ export default function TabLayout() {
 
         if (isMounted) {
           const hasSession = !error && data && data.length > 0;
-          console.log("Tab bar - Active session check:", hasSession);
           setHasActiveSession(hasSession);
         }
       } catch {
@@ -52,7 +111,6 @@ export default function TabLayout() {
       } = await supabase.auth.getUser();
       if (!user || !isMounted) return;
 
-      // Listen for session changes filtered by user_id
       channel = supabase
         .channel(`tab_bar_session_check_${user.id}`)
         .on(
@@ -63,11 +121,7 @@ export default function TabLayout() {
             table: "blocking_sessions",
             filter: `user_id=eq.${user.id}`,
           },
-          (payload) => {
-            console.log("Tab bar - Session UPDATE received:", {
-              old: payload.old,
-              new: payload.new,
-            });
+          () => {
             if (isMounted) {
               checkActiveSession();
             }
@@ -82,15 +136,12 @@ export default function TabLayout() {
             filter: `user_id=eq.${user.id}`,
           },
           () => {
-            console.log("Tab bar - Session INSERT received");
             if (isMounted) {
               checkActiveSession();
             }
           }
         )
-        .subscribe((status) => {
-          console.log("Tab bar subscription status:", status);
-        });
+        .subscribe();
     };
 
     setupSubscription();
@@ -105,28 +156,20 @@ export default function TabLayout() {
 
   // Use dark mode when there's an active session, otherwise use system preference
   const colorScheme = hasActiveSession ? "dark" : systemColorScheme;
+  const colors = Colors[colorScheme ?? "light"];
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-        tabBarInactiveTintColor: colorScheme === "dark" ? "#666" : undefined,
-        tabBarStyle: {
-          backgroundColor: colorScheme === "dark" ? "#000000" : "#ffffff",
-          borderTopColor: colorScheme === "dark" ? "#333333" : "#e0e0e0",
-        },
         headerShown: false,
-        tabBarButton: HapticTab,
       }}
+      tabBar={(props) => <CustomTabBar {...props} colors={colors} />}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Anchor",
           tabBarLabel: "Anchor",
-          tabBarIcon: ({ color }) => (
-            <Feather name="anchor" size={24} color={color} />
-          ),
         }}
       />
       <Tabs.Screen
@@ -134,11 +177,32 @@ export default function TabLayout() {
         options={{
           title: "Profile",
           tabBarLabel: "Profile",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="person.fill" color={color} />
-          ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingBottom: 32,
+    gap: 48,
+  },
+  tabItem: {
+    alignItems: "center",
+    gap: 8,
+  },
+  tabLabel: {
+    fontSize: 12,
+    letterSpacing: 1,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+});

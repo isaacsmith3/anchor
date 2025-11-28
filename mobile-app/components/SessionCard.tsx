@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import { Colors } from "@/constants/theme";
 
 interface Session {
   id: string;
@@ -18,6 +19,7 @@ interface SessionCardProps {
   session: Session;
   onStop: (sessionId: string) => Promise<void>;
   isLoading?: boolean;
+  isScanning?: boolean;
   isDarkMode?: boolean;
 }
 
@@ -25,43 +27,75 @@ export default function SessionCard({
   session,
   onStop,
   isLoading,
+  isScanning,
   isDarkMode = false,
 }: SessionCardProps) {
+  const colors = isDarkMode ? Colors.dark : Colors.light;
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString();
   };
 
   return (
-    <View style={[styles.card, isDarkMode && styles.cardDark]}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.cardBg,
+          borderColor: colors.border,
+        },
+      ]}
+    >
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.modeName, isDarkMode && styles.modeNameDark]}>
+        <Text style={[styles.modeName, { color: colors.text }]}>
           {session.mode_name}
         </Text>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>ACTIVE</Text>
+        <View style={[styles.badge, { borderColor: colors.text }]}>
+          <Text style={[styles.badgeText, { color: colors.text }]}>ACTIVE</Text>
         </View>
       </View>
 
+      {/* Info */}
       <View style={styles.info}>
-        <Text style={[styles.infoLabel, isDarkMode && styles.infoLabelDark]}>
+        <Text style={[styles.infoLabel, { color: colors.textMuted }]}>
           Blocking {session.websites.length} website
           {session.websites.length !== 1 ? "s" : ""}
         </Text>
-        <Text style={[styles.infoLabel, isDarkMode && styles.infoLabelDark]}>
+        <Text style={[styles.infoLabel, { color: colors.textMuted }]}>
           Started: {formatDate(session.started_at)}
         </Text>
       </View>
 
+      {/* NFC Scanning Indicator */}
+      {isScanning && (
+        <View style={styles.scanningContainer}>
+          <ActivityIndicator color={colors.text} size="small" />
+          <Text style={[styles.scanningText, { color: colors.text }]}>
+            Hold phone near your Anchor device...
+          </Text>
+        </View>
+      )}
+
+      {/* Stop Button */}
       <TouchableOpacity
-        style={[styles.stopButton, isLoading && styles.stopButtonDisabled]}
+        style={[
+          styles.stopButton,
+          {
+            backgroundColor: colors.text,
+          },
+          (isLoading || isScanning) && styles.stopButtonDisabled,
+        ]}
         onPress={() => onStop(session.id)}
-        disabled={isLoading}
+        disabled={isLoading || isScanning}
       >
         {isLoading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.background} />
         ) : (
-          <Text style={styles.stopButtonText}>Stop Session</Text>
+          <Text style={[styles.stopButtonText, { color: colors.background }]}>
+            {isScanning ? "Scanning for NFC..." : "Deactivate Session"}
+          </Text>
         )}
       </TouchableOpacity>
     </View>
@@ -70,70 +104,64 @@ export default function SessionCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
     borderRadius: 12,
-    padding: 20,
+    borderWidth: 1,
+    padding: 24,
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardDark: {
-    backgroundColor: "#1a1a1a",
-    shadowOpacity: 0.3,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   modeName: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#000",
+    fontWeight: "700",
     flex: 1,
   },
-  modeNameDark: {
-    color: "#ffffff",
-  },
   badge: {
-    backgroundColor: "#10b981",
-    paddingHorizontal: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 4,
   },
   badgeText: {
-    color: "#fff",
     fontSize: 10,
     fontWeight: "600",
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
   info: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   infoLabel: {
     fontSize: 14,
-    color: "#666",
-    marginBottom: 4,
-  },
-  infoLabelDark: {
-    color: "#9ca3af",
+    marginBottom: 6,
   },
   stopButton: {
-    backgroundColor: "#ef4444",
     borderRadius: 8,
-    padding: 14,
+    padding: 16,
     alignItems: "center",
   },
   stopButtonDisabled: {
     opacity: 0.6,
   },
   stopButtonText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  scanningContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: "rgba(128, 128, 128, 0.1)",
+  },
+  scanningText: {
+    marginLeft: 10,
+    fontSize: 14,
+    fontWeight: "500",
   },
 });

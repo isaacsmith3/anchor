@@ -4,6 +4,15 @@ const BlockedPage: React.FC = () => {
   const [blockedSite, setBlockedSite] = useState<string>("");
   const [isChecking, setIsChecking] = useState(false);
 
+  // Color definitions (dark mode only for blocked page)
+  const colors = {
+    bg: "#0f0f0f",
+    text: "#ffffff",
+    textMuted: "#737373",
+    border: "#262626",
+    cardBg: "#171717",
+  };
+
   useEffect(() => {
     // Get the blocked site URL from query parameters
     const urlParams = new URLSearchParams(window.location.search);
@@ -13,8 +22,8 @@ const BlockedPage: React.FC = () => {
     }
 
     // Set dark mode background
-    document.body.style.backgroundColor = "#000000";
-    document.documentElement.style.backgroundColor = "#000000";
+    document.body.style.backgroundColor = colors.bg;
+    document.documentElement.style.backgroundColor = colors.bg;
 
     const checkBlockingStatus = async () => {
       try {
@@ -67,38 +76,118 @@ const BlockedPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-5 bg-black">
-      <div className="w-full max-w-[600px]">
-        <div className="bg-gray-900 rounded-lg p-12 border border-gray-700 text-center animate-[slideUp_0.4s_ease-out] shadow-lg">
-          <div className="text-6xl mb-6">⚓️</div>
-          <h1 className="text-3xl text-white mb-3 font-semibold">
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+        backgroundColor: colors.bg,
+      }}
+    >
+      <div style={{ width: "100%", maxWidth: "600px" }}>
+        <div
+          style={{
+            backgroundColor: colors.cardBg,
+            borderRadius: "12px",
+            padding: "48px",
+            border: `1px solid ${colors.border}`,
+            textAlign: "center",
+            animation: "slideUp 0.4s ease-out",
+          }}
+        >
+          <img
+            src={chrome.runtime.getURL("anchor-icon128.png")}
+            alt="Anchor"
+            style={{
+              width: "64px",
+              height: "64px",
+              marginBottom: "24px",
+              opacity: 0.9,
+              display: "block",
+              marginLeft: "auto",
+              marginRight: "auto",
+            }}
+          />
+          <h1
+            style={{
+              fontSize: "28px",
+              color: colors.text,
+              marginBottom: "12px",
+              fontWeight: 600,
+            }}
+          >
             Site Blocked
           </h1>
-          <p className="text-lg text-white font-semibold mb-4 break-words">
-            {blockedSite || "This site is blocked by Anchor"}
-          </p>
-          <p className="text-base text-gray-400 leading-relaxed mb-8">
-            This site is currently blocked by your active blocking mode.
-            {isChecking && <p>Checking blocking status...</p>}
+          <p
+            style={{
+              fontSize: "16px",
+              color: colors.textMuted,
+              lineHeight: 1.6,
+              marginBottom: "32px",
+            }}
+          >
+            Stay anchored to what matters.
+            {isChecking && (
+              <span style={{ display: "block", marginTop: "8px" }}>
+                Checking blocking status...
+              </span>
+            )}
           </p>
 
-          <div className="flex flex-col gap-3 mb-6">
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+              marginBottom: "24px",
+            }}
+          >
             <button
-              className="w-full px-8 py-4 border-2 border-gray-700 rounded-lg bg-gray-900 text-gray-300 text-base font-semibold cursor-pointer transition-all hover:bg-gray-800 hover:border-gray-600 hover:text-white"
+              style={{
+                width: "100%",
+                padding: "16px 32px",
+                border: `2px solid ${colors.border}`,
+                borderRadius: "8px",
+                backgroundColor: "transparent",
+                color: colors.textMuted,
+                fontSize: "16px",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
               onClick={handleGoBack}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = colors.text;
+                e.currentTarget.style.color = colors.text;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = colors.border;
+                e.currentTarget.style.color = colors.textMuted;
+              }}
             >
               ← Go Back
             </button>
           </div>
 
-          <div className="border-t border-gray-700 pt-6 text-[13px] text-gray-400">
-            <p className="mb-1">Need to manage your blocked sites?</p>
+          <div
+            style={{
+              borderTop: `1px solid ${colors.border}`,
+              paddingTop: "24px",
+              fontSize: "13px",
+              color: colors.textMuted,
+            }}
+          >
+            <p style={{ marginBottom: "4px" }}>
+              Need to manage your blocked sites?
+            </p>
             <p>Open the Anchor mobile app.</p>
           </div>
         </div>
       </div>
       <style>{`
-        @keyframes slideUp {fd
+        @keyframes slideUp {
           from {
             opacity: 0;
             transform: translateY(30px);

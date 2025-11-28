@@ -2,13 +2,26 @@ import Link from "next/link";
 
 export function Footer() {
   return (
-    <footer className="w-full flex items-center justify-center border-t bg-background/70 mx-auto text-center text-lg gap-12 py-16">
+    <footer className="w-full border-t border-border py-12">
+      <div className="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="text-sm text-muted-foreground">
+          © {new Date().getFullYear()} Anchor. All rights reserved.
+        </div>
+        <div className="flex gap-8">
       <Link
-        className="font-bold hover:underline text-foreground transition"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         href="/contact"
       >
         Contact
       </Link>
+          <Link
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            href="/pricing"
+          >
+            Pricing
+          </Link>
+        </div>
+      </div>
     </footer>
   );
 }
