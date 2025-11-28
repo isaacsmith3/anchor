@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import DotGrid from "@/components/DotGrid";
-import Link from "next/link";
 
 export function Hero() {
   const [isDark, setIsDark] = useState(false);
@@ -23,7 +22,7 @@ export function Hero() {
     return () => observer.disconnect();
   }, []);
 
-  const bgColor = isDark ? "rgb(10, 10, 10)" : "rgb(255, 255, 255)";
+  const bgColor = isDark ? " #0f0f0f" : "rgb(255, 255, 255)";
 
   return (
     <div className="relative w-full min-h-[500px] lg:min-h-[600px] flex items-center justify-center overflow-hidden">
