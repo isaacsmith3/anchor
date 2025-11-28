@@ -19,6 +19,7 @@ interface SessionCardProps {
   session: Session;
   onStop: (sessionId: string) => Promise<void>;
   isLoading?: boolean;
+  isScanning?: boolean;
   isDarkMode?: boolean;
 }
 
@@ -26,6 +27,7 @@ export default function SessionCard({
   session,
   onStop,
   isLoading,
+  isScanning,
   isDarkMode = false,
 }: SessionCardProps) {
   const colors = isDarkMode ? Colors.dark : Colors.light;
@@ -66,6 +68,16 @@ export default function SessionCard({
         </Text>
       </View>
 
+      {/* NFC Scanning Indicator */}
+      {isScanning && (
+        <View style={styles.scanningContainer}>
+          <ActivityIndicator color={colors.text} size="small" />
+          <Text style={[styles.scanningText, { color: colors.text }]}>
+            Hold phone near your Anchor device...
+          </Text>
+        </View>
+      )}
+
       {/* Stop Button */}
       <TouchableOpacity
         style={[
@@ -73,16 +85,16 @@ export default function SessionCard({
           {
             backgroundColor: colors.text,
           },
-          isLoading && styles.stopButtonDisabled,
+          (isLoading || isScanning) && styles.stopButtonDisabled,
         ]}
         onPress={() => onStop(session.id)}
-        disabled={isLoading}
+        disabled={isLoading || isScanning}
       >
         {isLoading ? (
           <ActivityIndicator color={colors.background} />
         ) : (
           <Text style={[styles.stopButtonText, { color: colors.background }]}>
-            Deactivate Session
+            {isScanning ? "Scanning for NFC..." : "Deactivate Session"}
           </Text>
         )}
       </TouchableOpacity>
@@ -137,5 +149,19 @@ const styles = StyleSheet.create({
   stopButtonText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  scanningContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: "rgba(128, 128, 128, 0.1)",
+  },
+  scanningText: {
+    marginLeft: 10,
+    fontSize: 14,
+    fontWeight: "500",
   },
 });

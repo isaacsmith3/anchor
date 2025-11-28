@@ -8,7 +8,7 @@ module.exports = {
         dark: "#0f0f0f",
         light: "#ffffff",
         // Slight variations for subtle UI elements
-        gray: {
+          gray: {
           50: "#fafafa",
           100: "#f5f5f5",
           200: "#e5e5e5",

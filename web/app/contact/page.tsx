@@ -3,24 +3,27 @@ import { Footer } from "@/components/footer";
 
 export default function ContactPage() {
   return (
-    <main className="min-h-screen flex flex-col items-center">
+    <main className="min-h-screen flex flex-col">
       <Nav />
-      <div className="flex-1 w-full flex flex-col gap-20 items-center">
-        <div className="flex-1 flex flex-col gap-8 max-w-3xl p-5 items-center justify-center text-center">
-          <h1 className="text-4xl lg:text-5xl font-bold">Contact</h1>
-          <p className="text-lg text-muted-foreground mt-4">
-            Get in touch with us
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-20">
+        <div className="max-w-lg w-full text-center">
+          <h1 className="text-4xl lg:text-5xl font-bold mb-6">Contact</h1>
+          <p className="text-muted-foreground mb-8">
+            Have questions? Get in touch with us.
           </p>
-          <a
-            href="mailto:contact@app"
-            className="text-xl font-semibold hover:underline text-foreground transition mt-4"
-          >
-            contact@app
-          </a>
-        </div>
 
-        <Footer />
+          <div className="border border-border rounded-xl p-8">
+            <p className="text-muted-foreground text-sm mb-4">Email us at</p>
+            <a
+              href="mailto:hello@anchor.app"
+              className="text-xl font-semibold hover:underline text-foreground transition"
+            >
+              hello@anchor.app
+            </a>
+          </div>
+        </div>
       </div>
+      <Footer />
     </main>
   );
 }
