@@ -8,12 +8,12 @@ export function Footer() {
           © {new Date().getFullYear()} Anchor. All rights reserved.
         </div>
         <div className="flex gap-8">
-          <Link
+      <Link
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            href="/contact"
-          >
-            Contact
-          </Link>
+        href="/contact"
+      >
+        Contact
+      </Link>
           <Link
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             href="/pricing"

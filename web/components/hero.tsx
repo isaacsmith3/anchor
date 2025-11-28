@@ -5,7 +5,7 @@ export function Hero() {
     <div className="flex flex-col gap-10 items-center text-center py-20">
       <h1 className="text-5xl lg:text-7xl font-bold !leading-tight mx-auto max-w-4xl tracking-tight">
         Lock In On What&apos;s Important
-      </h1>
+      </h1> 
       <p className="text-lg lg:text-xl text-muted-foreground mx-auto max-w-2xl leading-relaxed">
         Anchor blocks distracting websites with NFC friction. Stay focused and
         get things done.

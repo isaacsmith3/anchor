@@ -12,14 +12,23 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Color definitions (light mode for auth)
+  const colors = {
+    bg: "#ffffff",
+    text: "#0f0f0f",
+    textMuted: "#737373",
+    border: "#e5e5e5",
+    cardBg: "#fafafa",
+    inputBorder: "#d4d4d4",
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
-    
+
     try {
       if (isLogin) {
-        // Login
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -28,7 +37,6 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
         if (error) throw error;
 
         if (data.session) {
-          // Save session with access_token and refresh_token for storage
           await saveSession({
             access_token: data.session.access_token,
             refresh_token: data.session.refresh_token,
@@ -36,7 +44,6 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
           onAuthSuccess();
         }
       } else {
-        // Sign up
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -45,14 +52,12 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
         if (error) throw error;
 
         if (data.session) {
-          // User is automatically signed in after signup
           await saveSession({
             access_token: data.session.access_token,
             refresh_token: data.session.refresh_token,
           });
           onAuthSuccess();
         } else {
-          // Email confirmation required
           setError(
             "Please check your email to confirm your account before signing in."
           );
@@ -65,45 +70,98 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
     }
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    await clearSession();
-    setIsLogin(true);
-    setEmail("");
-    setPassword("");
-    setError(null);
-  };
-
   return (
-    <div className="flex flex-col w-full min-w-[400px] min-h-full antialiased bg-gradient-to-b from-gray-50 to-white text-mono-black">
-      <header className="px-6 py-7 text-center border-b shadow-sm bg-gradient-to-br from-mono-dark via-mono-black to-mono-dark border-mono-black text-black">
-        <h1 className="text-xl font-semibold mb-0.5 tracking-tight">
-          Anchor ⚓
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        minWidth: "400px",
+        minHeight: "100%",
+        backgroundColor: colors.bg,
+        color: colors.text,
+      }}
+    >
+      {/* Header */}
+      <header
+        style={{
+          padding: "28px 24px",
+          textAlign: "center",
+          backgroundColor: "#0f0f0f",
+          color: "#ffffff",
+        }}
+      >
+        <h1
+          style={{
+            fontSize: "20px",
+            fontWeight: 700,
+            letterSpacing: "0.1em",
+            margin: 0,
+          }}
+        >
+          ANCHOR
         </h1>
       </header>
 
-      <div className="flex-1 px-6 py-8">
-        <div className="max-w-sm mx-auto">
-          <h2 className="text-2xl font-bold mb-2 text-mono-black text-center">
-            {isLogin ? "Welcome Back" : "Create Account"}
+      {/* Content */}
+      <div
+        style={{
+          flex: 1,
+          padding: "32px 24px",
+        }}
+      >
+        <div style={{ maxWidth: "320px", margin: "0 auto" }}>
+          <h2
+            style={{
+              fontSize: "24px",
+              fontWeight: 700,
+              marginBottom: "8px",
+              textAlign: "center",
+              color: colors.text,
+            }}
+          >
+            {isLogin ? "Welcome back" : "Create account"}
           </h2>
-          <p className="text-sm text-mono-gray-muted text-center mb-8">
+          <p
+            style={{
+              fontSize: "14px",
+              color: colors.textMuted,
+              textAlign: "center",
+              marginBottom: "32px",
+            }}
+          >
             {isLogin
               ? "Sign in to sync your modes across devices"
               : "Sign up to get started with Anchor"}
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit}>
             {error && (
-              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+              <div
+                style={{
+                  padding: "12px 16px",
+                  borderRadius: "8px",
+                  backgroundColor: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  color: "#dc2626",
+                  fontSize: "13px",
+                  marginBottom: "20px",
+                }}
+              >
                 {error}
               </div>
             )}
 
-            <div>
+            <div style={{ marginBottom: "20px" }}>
               <label
                 htmlFor="email"
-                className="block text-xs font-semibold mb-2 text-mono-black tracking-wide"
+                style={{
+                  display: "block",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  marginBottom: "8px",
+                  color: colors.text,
+                }}
               >
                 Email
               </label>
@@ -114,14 +172,30 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
                 required
-                className="w-full px-4 py-3 border-2 border-mono-gray-input rounded-lg text-sm bg-white text-mono-black transition-all focus:outline-none focus:border-accent-blue focus:ring-2 focus:ring-accent-blueLight placeholder:text-mono-gray-muted"
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  border: `2px solid ${colors.inputBorder}`,
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                  backgroundColor: colors.bg,
+                  color: colors.text,
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
               />
             </div>
 
-            <div>
+            <div style={{ marginBottom: "24px" }}>
               <label
                 htmlFor="password"
-                className="block text-xs font-semibold mb-2 text-mono-black tracking-wide"
+                style={{
+                  display: "block",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  marginBottom: "8px",
+                  color: colors.text,
+                }}
               >
                 Password
               </label>
@@ -133,20 +207,42 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
                 placeholder="Enter your password"
                 required
                 minLength={6}
-                className="w-full px-4 py-3 border-2 border-mono-gray-input rounded-lg text-sm bg-white text-mono-black transition-all focus:outline-none focus:border-accent-blue focus:ring-2 focus:ring-accent-blueLight placeholder:text-mono-gray-muted"
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  border: `2px solid ${colors.inputBorder}`,
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                  backgroundColor: colors.bg,
+                  color: colors.text,
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full px-5 py-3 border-2 border-accent-blue rounded-lg bg-white text-accent-blue font-semibold text-sm tracking-wide transition-all hover:bg-accent-blue hover:text-white hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+              style={{
+                width: "100%",
+                padding: "14px 20px",
+                border: `2px solid ${colors.text}`,
+                borderRadius: "8px",
+                backgroundColor: colors.text,
+                color: colors.bg,
+                fontWeight: 600,
+                fontSize: "14px",
+                cursor: isLoading ? "not-allowed" : "pointer",
+                opacity: isLoading ? 0.6 : 1,
+                transition: "all 0.2s ease",
+              }}
             >
               {isLoading ? "Please wait..." : isLogin ? "Sign In" : "Sign Up"}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div style={{ marginTop: "24px", textAlign: "center" }}>
             <button
               type="button"
               onClick={() => {
@@ -154,11 +250,21 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
                 setError(null);
                 setPassword("");
               }}
-              className="text-sm text-accent-blue hover:text-accent-purple font-medium transition-colors"
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: "14px",
+                color: colors.textMuted,
+                cursor: "pointer",
+                padding: 0,
+              }}
             >
               {isLogin
-                ? "Don't have an account? Sign up"
-                : "Already have an account? Sign in"}
+                ? "Don't have an account? "
+                : "Already have an account? "}
+              <span style={{ color: colors.text, fontWeight: 600 }}>
+                {isLogin ? "Sign up" : "Sign in"}
+              </span>
             </button>
           </div>
         </div>

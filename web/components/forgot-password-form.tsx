@@ -46,7 +46,7 @@ export function ForgotPasswordForm({
 
       {/* Form Card */}
       <div className="border border-border rounded-xl p-8">
-        {success ? (
+      {success ? (
           <>
             <div className="mb-6">
               <h1 className="text-2xl font-bold mb-2">Check your email</h1>
@@ -67,7 +67,7 @@ export function ForgotPasswordForm({
               </Link>
             </div>
           </>
-        ) : (
+      ) : (
           <>
             <div className="mb-8">
               <h1 className="text-2xl font-bold mb-2">Reset password</h1>
@@ -121,7 +121,7 @@ export function ForgotPasswordForm({
               </div>
             </form>
           </>
-        )}
+      )}
       </div>
     </div>
   );

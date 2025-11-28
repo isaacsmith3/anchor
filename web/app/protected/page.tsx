@@ -45,8 +45,8 @@ export default function ProtectedPage() {
             <h1 className="text-2xl font-bold mb-2">Profile</h1>
             <p className="text-muted-foreground text-sm mb-6">
               <Suspense fallback="Loading...">
-                <UserDetails />
-              </Suspense>
+            <UserDetails />
+          </Suspense>
             </p>
             <div className="border-t border-border pt-6">
               <p className="text-sm text-muted-foreground">
@@ -54,8 +54,8 @@ export default function ProtectedPage() {
                 mobile app.
               </p>
             </div>
-          </div>
-        </div>
+      </div>
+      </div>
       </main>
     </div>
   );

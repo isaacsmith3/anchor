@@ -21,9 +21,9 @@ export default function Page() {
             <p className="text-muted-foreground text-sm mb-6">
               We&apos;ve sent you a confirmation link
             </p>
-            <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
               Please check your email to confirm your account before signing in.
-            </p>
+              </p>
             <div className="mt-8">
               <Link
                 href="/auth/login"

@@ -56,8 +56,8 @@ export function LoginForm({
           </p>
         </div>
 
-        <form onSubmit={handleLogin}>
-          <div className="flex flex-col gap-6">
+          <form onSubmit={handleLogin}>
+            <div className="flex flex-col gap-6">
             {error && (
               <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
                 <p className="text-sm text-red-600 dark:text-red-400">
@@ -66,42 +66,42 @@ export function LoginForm({
               </div>
             )}
 
-            <div className="grid gap-2">
+              <div className="grid gap-2">
               <Label htmlFor="email" className="text-sm font-semibold">
                 Email
               </Label>
-              <Input
-                id="email"
-                type="email"
+                <Input
+                  id="email"
+                  type="email"
                 placeholder="Enter your email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 className="h-12 border-2 focus:border-foreground"
-              />
-            </div>
+                />
+              </div>
 
-            <div className="grid gap-2">
+              <div className="grid gap-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password" className="text-sm font-semibold">
                   Password
                 </Label>
-                <Link
-                  href="/auth/forgot-password"
+                  <Link
+                    href="/auth/forgot-password"
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
+                  >
                   Forgot password?
-                </Link>
-              </div>
-              <Input
-                id="password"
-                type="password"
+                  </Link>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
                 placeholder="Enter your password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 className="h-12 border-2 focus:border-foreground"
-              />
+                />
             </div>
 
             <button
@@ -114,15 +114,15 @@ export function LoginForm({
           </div>
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link
-              href="/auth/sign-up"
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/auth/sign-up"
               className="text-foreground font-semibold hover:underline"
-            >
-              Sign up
-            </Link>
-          </div>
-        </form>
+              >
+                Sign up
+              </Link>
+            </div>
+          </form>
       </div>
     </div>
   );
