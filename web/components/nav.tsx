@@ -13,10 +13,9 @@ export function Nav() {
   ];
 
   return (
-    <nav className="w-full flex justify-between items-center h-20 sticky top-0 bg-background z-50 px-6 lg:px-28">
-      {/* Logo */}
-      <div className="flex items-center justify-start">
-        <Link href="/" className="text-xl lg:text-2xl font-bold tracking-wider">
+    <nav className="w-full flex justify-between items-center border-b-foreground/10 h-20 sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50 px-6 lg:px-28">
+      <div className="flex items-center justify-start font-semibold">
+        <Link href={"/"} className="text-3xl lg:text-4xl font-bold">
           ANCHOR
         </Link>
       </div>

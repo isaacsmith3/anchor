@@ -1,18 +1,24 @@
 import { Hero } from "@/components/hero";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
+import { Demo } from "@/components/demo";
 
 export default function Home() {
   return (
-    <main className="min-h-screen flex flex-col items-center">
+    <main className="min-h-screen flex flex-col">
       <Nav />
-      <div className="flex-1 w-full flex flex-col gap-20 items-center">
-        <div className="flex-1 flex flex-col gap-20 max-w-5xl p-5 items-center justify-center">
-          <Hero />
-        </div>
 
-        <Footer />
-      </div>
+      {/* Hero Section */}
+      <section className="flex-1 flex flex-col items-center justify-center px-6 py-20">
+        <Hero />
+      </section>
+
+      {/* Demo Section */}
+      <section className="px-6 py-20 border-border">
+        <Demo />
+      </section>
+
+      <Footer />
     </main>
   );
 }
