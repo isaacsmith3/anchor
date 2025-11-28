@@ -310,10 +310,6 @@ export function Demo() {
                 }`}
               >
                 <span>9:41</span>
-                <div className="flex gap-1">
-                  <span>📶</span>
-                  <span>🔋</span>
-                </div>
               </div>
 
               {/* App Header */}
