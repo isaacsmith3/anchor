@@ -150,7 +150,7 @@ export default function ContactPage() {
                     required
                     rows={4}
                     className="w-full rounded-lg border-2 border-input bg-background px-3 py-2 text-sm outline-none focus:border-foreground"
-                    placeholder="Tell me what you have in mind…"
+                    placeholder="Tell us what you have in mind…"
                   />
                 </div>
 

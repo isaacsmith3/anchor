@@ -54,7 +54,7 @@ export function Nav() {
       {/* CTA Button */}
       <div className="flex items-center justify-end">
         <Link
-          href="/protected"
+          href="/contact"
           className="border-2 border-foreground bg-transparent hover:bg-foreground text-foreground hover:text-background font-semibold px-6 py-2.5 rounded-lg transition-all duration-200 text-sm"
         >
           Try it out
