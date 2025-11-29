@@ -95,7 +95,7 @@ export function Hero() {
               : "0 2px 20px rgba(255, 255, 255, 0.8)",
           }}
         >
-          Lock In On What&apos;s Important
+          Lock In On What Matters
         </h1>
         <p
           className="text-lg lg:text-xl text-muted-foreground mx-auto max-w-2xl"
@@ -105,7 +105,7 @@ export function Hero() {
               : "0 1px 10px rgba(255, 255, 255, 0.6)",
           }}
         >
-          Anchor blocks distracting websites with NFC friction. Stay focused and
+          Anchor blocks distracting websites with real friction. Stay focused and
           get things done.
         </p>
       </div>

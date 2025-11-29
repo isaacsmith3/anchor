@@ -722,61 +722,83 @@ const Popup: React.FC = () => {
                 backgroundColor: colors.bg,
               }}
             >
-              <button
-                style={{
-                  width: "100%",
-                  padding: "16px 20px",
-                  borderRadius: "8px",
-                  fontWeight: 600,
-                  fontSize: "14px",
-                  letterSpacing: "0.02em",
-                  border: `2px solid ${colors.text}`,
-                  backgroundColor:
-                    activeMode && activeMode.id === selectedModeId
-                      ? colors.text
-                      : "transparent",
-                  color:
-                    activeMode && activeMode.id === selectedModeId
-                      ? colors.bg
-                      : colors.text,
-                  cursor:
-                    isLoading ||
-                    (activeMode !== null && activeMode.id !== selectedModeId)
-                      ? "not-allowed"
-                      : "pointer",
-                  opacity:
-                    isLoading ||
-                    (activeMode !== null && activeMode.id !== selectedModeId)
-                      ? 0.6
-                      : 1,
-                  transition: "all 0.2s ease",
-                }}
-                onClick={handleToggleBlocking}
-                disabled={
-                  isLoading ||
-                  (activeMode !== null && activeMode.id !== selectedModeId)
-                }
-              >
-                {activeMode && activeMode.id === selectedModeId
-                  ? isLoading
-                    ? "Stopping..."
-                    : "Deactivate Session"
-                  : isLoading
-                  ? "Starting..."
-                  : "Activate Session"}
-              </button>
-              {activeMode && activeMode.id === selectedModeId && (
-                <p
+              {activeMode && activeMode.id === selectedModeId ? (
+                <>
+                  <div
+                    style={{
+                      width: "100%",
+                      padding: "16px 20px",
+                      borderRadius: "8px",
+                      border: `2px solid ${colors.border}`,
+                      backgroundColor: colors.cardBg,
+                      textAlign: "center",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: "14px",
+                        fontWeight: 600,
+                        color: colors.text,
+                        margin: 0,
+                        marginBottom: "8px",
+                      }}
+                    >
+                      Session Active
+                    </p>
+                    <p
+                      style={{
+                        fontSize: "12px",
+                        color: colors.textMuted,
+                        margin: 0,
+                      }}
+                    >
+                      Currently blocking {activeMode.websites.length} website
+                      {activeMode.websites.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <p
+                    style={{
+                      fontSize: "12px",
+                      textAlign: "center",
+                      marginTop: "12px",
+                      color: colors.textMuted,
+                    }}
+                  >
+                    Deactivate from the mobile app
+                  </p>
+                </>
+              ) : (
+                <button
                   style={{
-                    fontSize: "12px",
-                    textAlign: "center",
-                    marginTop: "12px",
-                    color: colors.textMuted,
+                    width: "100%",
+                    padding: "16px 20px",
+                    borderRadius: "8px",
+                    fontWeight: 600,
+                    fontSize: "14px",
+                    letterSpacing: "0.02em",
+                    border: `2px solid ${colors.text}`,
+                    backgroundColor: "transparent",
+                    color: colors.text,
+                    cursor:
+                      isLoading ||
+                      (activeMode !== null && activeMode.id !== selectedModeId)
+                        ? "not-allowed"
+                        : "pointer",
+                    opacity:
+                      isLoading ||
+                      (activeMode !== null && activeMode.id !== selectedModeId)
+                        ? 0.6
+                        : 1,
+                    transition: "all 0.2s ease",
                   }}
+                  onClick={handleToggleBlocking}
+                  disabled={
+                    isLoading ||
+                    (activeMode !== null && activeMode.id !== selectedModeId)
+                  }
                 >
-                  Currently blocking {activeMode.websites.length} website
-                  {activeMode.websites.length !== 1 ? "s" : ""}
-                </p>
+                  {isLoading ? "Starting..." : "Activate Session"}
+                </button>
               )}
             </section>
           )}
