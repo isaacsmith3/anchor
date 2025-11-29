@@ -10,7 +10,7 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Anchor - Lock in when you're on your laptop",
+  title: "Anchor - Lock in on What Matters",
   description:
     "Anchor blocks distracting websites with NFC friction. Stay focused and get things done.",
 };
