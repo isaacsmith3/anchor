@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useActionState } from "react";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import DotGrid from "@/components/DotGrid";
+import { submitContact } from "./actions";
 
 export default function ContactPage() {
   const [isDark, setIsDark] = useState(false);
+  const [state, formAction] = useActionState(submitContact, {
+    ok: false,
+    error: null,
+  });
 
   useEffect(() => {
     const checkTheme = () => {
@@ -103,16 +108,64 @@ export default function ContactPage() {
             Questions, feedback, or just want to say hi?
           </p>
 
-          <div className="bg-card/80 backdrop-blur-sm border border-border rounded-2xl p-10">
-            <p className="text-sm text-muted-foreground mb-3 uppercase tracking-wider">
-              Email us at
-            </p>
-            <a
-              href="mailto:isaacwallacesmith@gmail.com"
-              className="text-2xl lg:text-3xl font-semibold hover:opacity-70 transition-opacity"
-            >
-              stevejobs@gmail.com
-            </a>
+          <div className="bg-card/80 backdrop-blur-sm border border-border rounded-2xl p-10 text-left">
+            {state.ok ? (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-foreground">
+                  Message sent
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Thanks for reaching out. We&apos;ll read this soon.
+                </p>
+              </div>
+            ) : (
+              <form action={formAction} className="space-y-6">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="email"
+                    className="text-sm font-semibold text-foreground"
+                  >
+                    Email
+                  </label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    className="w-full h-11 rounded-lg border-2 border-input bg-background px-3 text-sm outline-none focus:border-foreground"
+                    placeholder="you@example.com"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="message"
+                    className="text-sm font-semibold text-foreground"
+                  >
+                    Message
+                  </label>
+                  <textarea
+                    id="message"
+                    name="message"
+                    required
+                    rows={4}
+                    className="w-full rounded-lg border-2 border-input bg-background px-3 py-2 text-sm outline-none focus:border-foreground"
+                    placeholder="Tell me what you have in mind…"
+                  />
+                </div>
+
+                {state.error && (
+                  <p className="text-sm text-red-500">{state.error}</p>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full border-2 border-foreground bg-foreground text-background font-semibold text-sm px-4 py-3 rounded-lg transition-all hover:bg-transparent hover:text-foreground"
+                >
+                  Send message
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </div>
