@@ -11,4 +11,10 @@
 | 11/8/25   | Talking to customers     | 0.5   |
 | 11/11/25  | Ditch current, ideate    | 1     |
 | 11/12/25  | Pitch, plan, work        | 4     |
-
+| 11/14/25  | Supabase, mobile app     | 5     |
+| 11/17/25  | NFC reader research      | 1     |
+| 11/21/25  | Supabase realtime        | 2.5   |
+| 11/22/25  | Web app                  | 2     |
+| 11/24/25  | Extension                | 1     |
+| 11/27/25  | Code                     | 3     |
+| 11/28/25  | Code                     | 3     |

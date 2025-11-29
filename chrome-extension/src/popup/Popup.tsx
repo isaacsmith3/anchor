@@ -1,4 +1,11 @@
 import React, { useState, useEffect } from "react";
+import {
+  supabase,
+  initializeSession,
+  clearSession,
+  saveSession,
+} from "../lib/supabase";
+import Auth from "./Auth";
 
 interface Mode {
   id: string;
@@ -7,9 +14,11 @@ interface Mode {
   created_at: string;
 }
 
-type View = "blocking" | "modes";
+type View = "blocking" | "modes" | "profile";
 
 const Popup: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [currentView, setCurrentView] = useState<View>("blocking");
   const [modes, setModes] = useState<Mode[]>([]);
   const [activeMode, setActiveMode] = useState<Mode | null>(null);
@@ -22,10 +31,148 @@ const Popup: React.FC = () => {
   const [websiteInput, setWebsiteInput] = useState("");
   const [websites, setWebsites] = useState<string[]>([]);
 
+  // Check authentication status on mount
   useEffect(() => {
+    console.log("Popup: Component mounted, checking auth...");
+    checkAuth();
+  }, []);
+
+  // Load modes and active mode when authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     loadModes();
     loadActiveMode();
+
+    const initializeRealtimeSync = async () => {
+      try {
+        await chrome.runtime.sendMessage({
+          type: "INIT_REALTIME_SUBSCRIPTION",
+        });
+      } catch (error) {
+        console.error("Error initializing real-time subscription:", error);
+      }
+
+      await syncActiveModeWithSupabase();
+    };
+
+    initializeRealtimeSync();
+  }, [isAuthenticated]);
+
+  // Listen for auth state changes and token refresh
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log(
+        "Auth state changed:",
+        event,
+        session ? "session exists" : "no session"
+      );
+
+      if (session) {
+        setUser(session.user);
+        setIsAuthenticated(true);
+
+        // Save session whenever it changes (including token refresh)
+        if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN") {
+          await saveSession({
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+          });
+          console.log("Session saved after", event);
+        }
+      } else {
+        // Only clear session if explicitly signed out
+        if (event === "SIGNED_OUT") {
+          setUser(null);
+          setIsAuthenticated(false);
+          await clearSession();
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
+
+  useEffect(() => {
+    const handleStorageChange = (
+      changes: Record<string, chrome.storage.StorageChange>,
+      areaName: string
+    ) => {
+      if (areaName !== "local") {
+        return;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(changes, "active_mode")) {
+        setActiveMode(changes.active_mode.newValue || null);
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      // First try to restore session from storage
+      const session = await initializeSession();
+      if (session && session.user) {
+        setUser(session.user);
+        setIsAuthenticated(true);
+        return;
+      }
+
+      // If no stored session, check if there's an active session
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+
+      if (currentSession && currentSession.user) {
+        // Save this session to storage for future use
+        await saveSession({
+          access_token: currentSession.access_token,
+          refresh_token: currentSession.refresh_token,
+        });
+        setUser(currentSession.user);
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+      }
+    } catch (error) {
+      console.error("Error checking auth:", error);
+      setIsAuthenticated(false);
+    }
+  };
+
+  const handleAuthSuccess = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session) {
+      setUser(session.user);
+      setIsAuthenticated(true);
+      try {
+        await syncActiveModeWithSupabase();
+      } catch (error) {
+        console.error("Error syncing state after login:", error);
+      }
+    }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    await clearSession();
+    setUser(null);
+    setIsAuthenticated(false);
+  };
 
   // Redirect to blocking view if a session becomes active while on modes page
   useEffect(() => {
@@ -47,9 +194,9 @@ const Popup: React.FC = () => {
   // Update body and html background for dark mode
   useEffect(() => {
     const isDarkMode = !!activeMode;
-    document.body.style.backgroundColor = isDarkMode ? "#000000" : "#ffffff";
+    document.body.style.backgroundColor = isDarkMode ? "#0f0f0f" : "#ffffff";
     document.documentElement.style.backgroundColor = isDarkMode
-      ? "#000000"
+      ? "#0f0f0f"
       : "#ffffff";
 
     return () => {
@@ -84,6 +231,20 @@ const Popup: React.FC = () => {
       }
     } catch (error) {
       console.error("Error loading active mode:", error);
+    }
+  };
+
+  const syncActiveModeWithSupabase = async () => {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "SYNC_SESSION_STATE",
+      });
+
+      if (response?.success) {
+        setActiveMode(response.data);
+      }
+    } catch (error) {
+      console.error("Error syncing active mode with Supabase:", error);
     }
   };
 
@@ -264,137 +425,226 @@ const Popup: React.FC = () => {
     }
   };
 
+  // Show loading state while checking authentication
+  if (isAuthenticated === null) {
+    console.log("Popup: Loading authentication state...");
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          width: "100%",
+          minWidth: "400px",
+          minHeight: "100%",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "48px 0",
+          backgroundColor: "#ffffff",
+          color: "#0f0f0f",
+        }}
+      >
+        <div style={{ fontSize: "24px", marginBottom: "8px" }}>⚓</div>
+        <p style={{ fontSize: "14px", color: "#737373" }}>Loading...</p>
+      </div>
+    );
+  }
+
+  // Show auth component if not authenticated
+  if (!isAuthenticated) {
+    return <Auth onAuthSuccess={handleAuthSuccess} />;
+  }
+
   const isDarkMode = !!activeMode;
+
+  // Color definitions
+  const colors = {
+    bg: isDarkMode ? "#0f0f0f" : "#ffffff",
+    text: isDarkMode ? "#ffffff" : "#0f0f0f",
+    textMuted: isDarkMode ? "#737373" : "#737373",
+    border: isDarkMode ? "#262626" : "#e5e5e5",
+    cardBg: isDarkMode ? "#171717" : "#fafafa",
+    inputBorder: isDarkMode ? "#404040" : "#d4d4d4",
+  };
 
   return (
     <div
-      className={`flex flex-col w-full min-w-[400px] min-h-full antialiased transition-colors duration-300 ${
-        isDarkMode
-          ? "bg-black text-white"
-          : "bg-gradient-to-b from-gray-50 to-white text-mono-black"
-      }`}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        minWidth: "400px",
+        minHeight: "100%",
+        backgroundColor: colors.bg,
+        color: colors.text,
+        transition: "all 0.3s ease",
+      }}
     >
+      {/* Header */}
       <header
-        className={`px-6 py-7 text-center border-b shadow-sm transition-colors duration-300 ${
-          isDarkMode
-            ? "bg-black border-gray-700 text-white"
-            : "bg-gradient-to-br from-mono-dark via-mono-black to-mono-dark border-mono-black text-black"
-        }`}
+        style={{
+          padding: "28px 24px",
+          textAlign: "center",
+          backgroundColor: isDarkMode ? "#0f0f0f" : "#0f0f0f",
+          color: "#ffffff",
+        }}
       >
-        <div className="text-2xl mb-1">⚓</div>
-        <h1 className="text-xl font-semibold mb-0.5 tracking-tight">
-          Anchor Blocker
+        <h1
+          style={{
+            fontSize: "20px",
+            fontWeight: 700,
+            letterSpacing: "-0.02em",
+            margin: 0,
+          }}
+        >
+          ANCHOR
         </h1>
       </header>
 
       {/* Tab Navigation */}
       <div
-        className={`flex border-b transition-colors duration-300 ${
-          isDarkMode
-            ? "border-gray-700 bg-black"
-            : "border-mono-gray-border bg-white"
-        }`}
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "32px",
+          padding: "16px 0",
+          backgroundColor: colors.bg,
+        }}
       >
-        <button
-          className={`flex-1 px-5 py-3.5 text-xs font-medium tracking-wider uppercase transition-all relative ${
-            currentView === "blocking"
-              ? isDarkMode
-                ? "bg-black text-white border-b-2 border-accent-blue"
-                : "bg-white text-mono-black border-b-2 border-accent-blue"
-              : isDarkMode
-              ? "bg-black text-gray-400 hover:bg-gray-900 hover:text-white"
-              : "bg-gray-50 text-mono-gray-text hover:bg-white hover:text-mono-black"
-          }`}
-          onClick={() => setCurrentView("blocking")}
-        >
-          Blocking
-        </button>
-        <button
-          className={`flex-1 px-5 py-3.5 text-xs font-medium tracking-wider uppercase transition-all relative ${
-            currentView === "modes"
-              ? isDarkMode
-                ? "bg-black text-white border-b-2 border-accent-purple"
-                : "bg-white text-mono-black border-b-2 border-accent-purple"
-              : activeMode
-              ? isDarkMode
-                ? "bg-black text-gray-600 cursor-not-allowed opacity-60"
-                : "bg-gray-50 text-mono-gray-muted cursor-not-allowed opacity-60"
-              : isDarkMode
-              ? "bg-black text-gray-400 hover:bg-gray-900 hover:text-white"
-              : "bg-gray-50 text-mono-gray-text hover:bg-white hover:text-mono-black"
-          }`}
-          onClick={() => {
-            if (!activeMode) {
-              setCurrentView("modes");
-            } else {
-              alert(
-                `Cannot access modes page while a blocking session is active. Please stop the session with "${activeMode.name}" first.`
-              );
-            }
-          }}
-          disabled={!!activeMode}
-          title={
-            activeMode
-              ? `Stop "${activeMode.name}" session to manage modes`
-              : undefined
-          }
-        >
-          Modes
-        </button>
+        {(["blocking", "modes", "profile"] as View[]).map((tab) => {
+          const isActive = currentView === tab;
+          const isDisabled = activeMode && tab !== "blocking";
+          return (
+            <button
+              key={tab}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "12px",
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+                background: "none",
+                border: "none",
+                cursor: isDisabled ? "not-allowed" : "pointer",
+                opacity: isDisabled ? 0.4 : 1,
+                color: isActive ? colors.text : colors.textMuted,
+                fontWeight: isActive ? 700 : 500,
+                padding: 0,
+              }}
+              onClick={() => {
+                if (tab === "blocking") {
+                  setCurrentView("blocking");
+                } else if (!activeMode) {
+                  setCurrentView(tab);
+                } else {
+                  alert(
+                    `Cannot access ${tab} page while a blocking session is active. Please stop the session first.`
+                  );
+                }
+              }}
+              disabled={!!isDisabled}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              <span
+                style={{
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "50%",
+                  backgroundColor: isActive ? colors.text : "transparent",
+                }}
+              />
+            </button>
+          );
+        })}
       </div>
 
       {/* Content based on current view */}
       {currentView === "blocking" ? (
         <>
           <section
-            className={`px-6 py-6 border-b transition-colors duration-300 ${
-              isDarkMode
-                ? "border-gray-700 bg-black"
-                : "border-mono-gray-border bg-white"
-            }`}
+            style={{
+              padding: "24px",
+              borderBottom: `1px solid ${colors.border}`,
+              backgroundColor: colors.bg,
+            }}
           >
             <h3
-              className={`text-[11px] font-bold mb-4 tracking-wider uppercase flex items-center gap-2 ${
-                isDarkMode ? "text-white" : "text-mono-black"
-              }`}
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                marginBottom: "16px",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                color: colors.text,
+              }}
             >
-              <span className="w-1 h-4 bg-accent-blue rounded-full"></span>
+              <span
+                style={{
+                  width: "4px",
+                  height: "16px",
+                  backgroundColor: colors.text,
+                  borderRadius: "2px",
+                }}
+              />
               Select Blocking Session
             </h3>
             {modes.length === 0 ? (
-              <div className="text-center py-8">
+              <div style={{ textAlign: "center", padding: "32px 0" }}>
                 <div
-                  className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center border transition-colors duration-300 ${
-                    isDarkMode
-                      ? "from-gray-800 to-gray-900 border-gray-700"
-                      : "from-accent-purpleLight to-white border-accent-purpleLight"
-                  }`}
+                  style={{
+                    width: "64px",
+                    height: "64px",
+                    margin: "0 auto 16px",
+                    borderRadius: "16px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: `1px solid ${colors.border}`,
+                    backgroundColor: colors.cardBg,
+                  }}
                 >
-                  <span className="text-3xl">📋</span>
+                  <span style={{ fontSize: "28px" }}>📋</span>
                 </div>
                 <p
-                  className={`text-sm mb-5 font-medium ${
-                    isDarkMode ? "text-gray-400" : "text-mono-gray-muted"
-                  }`}
+                  style={{
+                    fontSize: "14px",
+                    marginBottom: "20px",
+                    fontWeight: 500,
+                    color: colors.textMuted,
+                  }}
                 >
                   No modes available
                 </p>
                 <button
-                  className={`px-5 py-2.5 border-2 border-accent-purple rounded-lg font-semibold text-xs transition-all hover:shadow-md hover:-translate-y-0.5 ${
-                    isDarkMode
-                      ? "bg-black text-accent-purple hover:bg-accent-purple hover:text-white"
-                      : "bg-white text-accent-purple hover:bg-accent-purple hover:text-white"
-                  }`}
+                  style={{
+                    padding: "10px 20px",
+                    border: `2px solid ${colors.text}`,
+                    borderRadius: "8px",
+                    fontWeight: 600,
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    backgroundColor: "transparent",
+                    color: colors.text,
+                    transition: "all 0.2s ease",
+                  }}
                   onClick={() => setCurrentView("modes")}
                 >
                   Create Your First Mode
                 </button>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+              >
                 {modes.map((mode) => {
                   const isDisabled =
                     activeMode !== null && activeMode.id !== mode.id;
+                  const isSelected = selectedModeId === mode.id;
+                  const isActiveSession = activeMode?.id === mode.id;
                   return (
                     <button
                       key={mode.id}
@@ -404,51 +654,55 @@ const Popup: React.FC = () => {
                         }
                       }}
                       disabled={isDisabled}
-                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                        selectedModeId === mode.id
-                          ? activeMode?.id === mode.id
-                            ? isDarkMode
-                              ? "border-accent-green bg-gray-800 shadow-md"
-                              : "border-accent-green bg-accent-greenLight shadow-md"
-                            : isDarkMode
-                            ? "border-accent-blue bg-gray-800 shadow-md"
-                            : "border-accent-blue bg-accent-blueLight shadow-md"
-                          : isDisabled
-                          ? isDarkMode
-                            ? "border-gray-800 bg-gray-900 opacity-50 cursor-not-allowed"
-                            : "border-mono-gray-border bg-white opacity-50 cursor-not-allowed"
-                          : isDarkMode
-                          ? "border-gray-700 bg-gray-900 hover:border-accent-blue hover:shadow-sm"
-                          : "border-mono-gray-border bg-white hover:border-accent-blue hover:shadow-sm"
-                      }`}
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        padding: "16px",
+                        borderRadius: "12px",
+                        border: `2px solid ${
+                          isSelected ? colors.text : colors.border
+                        }`,
+                        backgroundColor: isSelected ? colors.cardBg : colors.bg,
+                        cursor: isDisabled ? "not-allowed" : "pointer",
+                        opacity: isDisabled ? 0.5 : 1,
+                        transition: "all 0.2s ease",
+                      }}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1 min-w-0">
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <div>
                           <div
-                            className={`font-bold text-sm mb-1 tracking-tight flex items-center gap-2 ${
-                              isDarkMode ? "text-white" : "text-mono-black"
-                            }`}
+                            style={{
+                              fontWeight: 700,
+                              fontSize: "14px",
+                              marginBottom: "4px",
+                              color: colors.text,
+                            }}
                           >
                             {mode.name}
                           </div>
                           <div
-                            className={`text-[11px] font-medium ${
-                              isDarkMode
-                                ? "text-gray-400"
-                                : "text-mono-gray-text"
-                            }`}
+                            style={{
+                              fontSize: "11px",
+                              fontWeight: 500,
+                              color: colors.textMuted,
+                            }}
                           >
                             {mode.websites.length} website
                             {mode.websites.length !== 1 ? "s" : ""}
                           </div>
                         </div>
-                        {selectedModeId === mode.id && (
+                        {isSelected && (
                           <span
-                            className={`text-lg ${
-                              isDarkMode
-                                ? "text-accent-blue"
-                                : "text-accent-blue"
-                            }`}
+                            style={{
+                              fontSize: "16px",
+                              color: colors.text,
+                            }}
                           >
                             ✓
                           </span>
@@ -463,22 +717,40 @@ const Popup: React.FC = () => {
 
           {modes.length > 0 && selectedModeId && (
             <section
-              className={`px-6 py-6 border-b last:border-b-0 transition-colors duration-300 ${
-                isDarkMode
-                  ? "border-gray-700 bg-black"
-                  : "border-mono-gray-border bg-white"
-              }`}
+              style={{
+                padding: "24px",
+                backgroundColor: colors.bg,
+              }}
             >
               <button
-                className={`w-full px-5 py-4 rounded-lg font-semibold text-[14px] tracking-wide border-2 transition-all hover:-translate-y-0.5 hover:shadow-sm ${
-                  activeMode && activeMode.id === selectedModeId
-                    ? isDarkMode
-                      ? "border-accent-red bg-gray-900 text-accent-red hover:bg-accent-red hover:text-white"
-                      : "border-accent-red bg-white text-accent-red hover:bg-accent-red hover:text-mono-black"
-                    : isDarkMode
-                    ? "border-accent-green bg-gray-900 text-accent-green hover:bg-accent-green hover:text-white"
-                    : "border-accent-green bg-white text-accent-green hover:bg-accent-green hover:text-mono-black"
-                } disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none`}
+                style={{
+                  width: "100%",
+                  padding: "16px 20px",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  letterSpacing: "0.02em",
+                  border: `2px solid ${colors.text}`,
+                  backgroundColor:
+                    activeMode && activeMode.id === selectedModeId
+                      ? colors.text
+                      : "transparent",
+                  color:
+                    activeMode && activeMode.id === selectedModeId
+                      ? colors.bg
+                      : colors.text,
+                  cursor:
+                    isLoading ||
+                    (activeMode !== null && activeMode.id !== selectedModeId)
+                      ? "not-allowed"
+                      : "pointer",
+                  opacity:
+                    isLoading ||
+                    (activeMode !== null && activeMode.id !== selectedModeId)
+                      ? 0.6
+                      : 1,
+                  transition: "all 0.2s ease",
+                }}
                 onClick={handleToggleBlocking}
                 disabled={
                   isLoading ||
@@ -495,9 +767,12 @@ const Popup: React.FC = () => {
               </button>
               {activeMode && activeMode.id === selectedModeId && (
                 <p
-                  className={`text-xs text-center mt-3 ${
-                    isDarkMode ? "text-gray-400" : "text-mono-gray-muted"
-                  }`}
+                  style={{
+                    fontSize: "12px",
+                    textAlign: "center",
+                    marginTop: "12px",
+                    color: colors.textMuted,
+                  }}
                 >
                   Currently blocking {activeMode.websites.length} website
                   {activeMode.websites.length !== 1 ? "s" : ""}
@@ -506,18 +781,50 @@ const Popup: React.FC = () => {
             </section>
           )}
         </>
-      ) : (
+      ) : currentView === "modes" ? (
         <>
-          <section className="px-6 py-6 border-b border-mono-gray-border bg-white">
-            <h3 className="text-[11px] font-bold mb-6 tracking-wider uppercase text-mono-black flex items-center gap-2">
-              <span className="w-1 h-4 bg-accent-purple rounded-full"></span>
+          <section
+            style={{
+              padding: "24px",
+              borderBottom: `1px solid ${colors.border}`,
+              backgroundColor: colors.bg,
+            }}
+          >
+            <h3
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                marginBottom: "24px",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                color: colors.text,
+              }}
+            >
+              <span
+                style={{
+                  width: "4px",
+                  height: "16px",
+                  backgroundColor: colors.text,
+                  borderRadius: "2px",
+                }}
+              />
               {editingMode ? "Edit Mode" : "Create New Mode"}
             </h3>
             <form onSubmit={handleCreateMode}>
-              <div className="mb-5">
+              <div style={{ marginBottom: "20px" }}>
                 <label
                   htmlFor="mode-name"
-                  className="block text-xs font-semibold mb-3 text-mono-black tracking-wide"
+                  style={{
+                    display: "block",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    marginBottom: "12px",
+                    color: colors.text,
+                    letterSpacing: "0.02em",
+                  }}
                 >
                   Mode Name
                 </label>
@@ -528,18 +835,35 @@ const Popup: React.FC = () => {
                   onChange={(e) => setModeName(e.target.value)}
                   placeholder="Enter mode name"
                   required
-                  className="w-full px-4 py-3 border-2 border-mono-gray-input rounded-lg text-sm bg-white text-mono-black transition-all focus:outline-none focus:border-accent-purple focus:ring-2 focus:ring-accent-purpleLight placeholder:text-mono-gray-muted"
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    border: `2px solid ${colors.inputBorder}`,
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    backgroundColor: colors.bg,
+                    color: colors.text,
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
                 />
               </div>
 
-              <div className="mb-6">
+              <div style={{ marginBottom: "24px" }}>
                 <label
                   htmlFor="website-input"
-                  className="block text-xs font-semibold mb-3 text-mono-black tracking-wide"
+                  style={{
+                    display: "block",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    marginBottom: "12px",
+                    color: colors.text,
+                    letterSpacing: "0.02em",
+                  }}
                 >
                   Add Website
                 </label>
-                <div className="flex gap-2">
+                <div style={{ display: "flex", gap: "8px" }}>
                   <input
                     type="text"
                     id="website-input"
@@ -552,37 +876,109 @@ const Popup: React.FC = () => {
                       }
                     }}
                     placeholder="Enter website url"
-                    className="flex-1 px-4 py-3 border-2 border-mono-gray-input rounded-lg text-sm bg-white text-mono-black transition-all focus:outline-none focus:border-accent-purple focus:ring-2 focus:ring-accent-purpleLight placeholder:text-mono-gray-muted"
+                    style={{
+                      flex: 1,
+                      padding: "12px 16px",
+                      border: `2px solid ${colors.inputBorder}`,
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      backgroundColor: colors.bg,
+                      color: colors.text,
+                      outline: "none",
+                    }}
                   />
                   <button
                     type="button"
-                    className="px-5 py-3 border-2 border-accent-purple rounded-lg bg-white text-accent-purple font-semibold text-[13px] tracking-wide transition-all hover:bg-accent-purple hover:text-mono-black hover:shadow-md hover:-translate-y-0.5 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                      padding: "12px 20px",
+                      border: `2px solid ${colors.text}`,
+                      borderRadius: "8px",
+                      backgroundColor: "transparent",
+                      color: colors.text,
+                      fontWeight: 600,
+                      fontSize: "13px",
+                      cursor: "pointer",
+                      flexShrink: 0,
+                    }}
                     onClick={handleAddWebsite}
                   >
                     Add
                   </button>
                 </div>
-                <small className="block mt-2 text-[11px] text-mono-gray-muted leading-relaxed">
+                <small
+                  style={{
+                    display: "block",
+                    marginTop: "8px",
+                    fontSize: "11px",
+                    color: colors.textMuted,
+                  }}
+                >
                   Enter one website at a time (e.g., youtube.com)
                 </small>
               </div>
 
               {websites.length > 0 && (
-                <div className="mb-6 p-4 bg-gradient-to-br from-accent-purpleLight to-white rounded-xl border border-accent-purpleLight">
-                  <label className="block text-xs font-semibold mb-3 text-mono-black tracking-wide">
+                <div
+                  style={{
+                    marginBottom: "24px",
+                    padding: "16px",
+                    backgroundColor: colors.cardBg,
+                    borderRadius: "12px",
+                    border: `1px solid ${colors.border}`,
+                  }}
+                >
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      marginBottom: "12px",
+                      color: colors.text,
+                    }}
+                  >
                     Websites in this mode ({websites.length})
                   </label>
-                  <ul className="space-y-2">
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                     {websites.map((website, index) => (
                       <li
                         key={index}
-                        className="text-sm text-mono-black flex items-center gap-3 group"
+                        style={{
+                          fontSize: "14px",
+                          color: colors.text,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          padding: "8px 0",
+                        }}
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-accent-purple shrink-0"></span>
-                        <span className="flex-1 font-medium">{website}</span>
+                        <span
+                          style={{
+                            width: "6px",
+                            height: "6px",
+                            borderRadius: "50%",
+                            backgroundColor: colors.text,
+                            flexShrink: 0,
+                          }}
+                        />
+                        <span style={{ flex: 1, fontWeight: 500 }}>
+                          {website}
+                        </span>
                         <button
                           type="button"
-                          className="bg-transparent border-none text-mono-gray-text text-lg cursor-pointer p-1 w-6 h-6 flex items-center justify-center rounded-full transition-all hover:bg-accent-redLight hover:text-accent-red font-light shrink-0 opacity-0 group-hover:opacity-100"
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: colors.textMuted,
+                            fontSize: "18px",
+                            cursor: "pointer",
+                            padding: "4px",
+                            width: "24px",
+                            height: "24px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: "50%",
+                          }}
                           onClick={() => handleRemoveWebsite(website)}
                           title="Remove website"
                         >
@@ -594,11 +990,21 @@ const Popup: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex gap-3 mt-6">
+              <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
                 {editingMode && (
                   <button
                     type="button"
-                    className="flex-1 px-5 py-3 border-2 border-mono-gray-input rounded-lg bg-white text-mono-black font-semibold text-[13px] tracking-wide transition-all hover:bg-mono-gray-light hover:border-mono-black hover:shadow-sm"
+                    style={{
+                      flex: 1,
+                      padding: "12px 20px",
+                      border: `2px solid ${colors.border}`,
+                      borderRadius: "8px",
+                      backgroundColor: "transparent",
+                      color: colors.text,
+                      fontWeight: 600,
+                      fontSize: "13px",
+                      cursor: "pointer",
+                    }}
                     onClick={handleCancelEdit}
                   >
                     Cancel
@@ -606,7 +1012,27 @@ const Popup: React.FC = () => {
                 )}
                 <button
                   type="submit"
-                  className="flex-1 px-5 py-3 border-2 border-accent-purple rounded-lg bg-white text-accent-purple font-semibold text-[13px] tracking-wide transition-all hover:bg-accent-purple hover:text-mono-black hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 disabled:bg-mono-gray-light disabled:text-mono-gray-text disabled:border-mono-gray-input disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+                  style={{
+                    flex: 1,
+                    padding: "12px 20px",
+                    border: `2px solid ${colors.text}`,
+                    borderRadius: "8px",
+                    backgroundColor:
+                      isLoading || websites.length === 0
+                        ? colors.cardBg
+                        : "transparent",
+                    color:
+                      isLoading || websites.length === 0
+                        ? colors.textMuted
+                        : colors.text,
+                    fontWeight: 600,
+                    fontSize: "13px",
+                    cursor:
+                      isLoading || websites.length === 0
+                        ? "not-allowed"
+                        : "pointer",
+                    opacity: isLoading || websites.length === 0 ? 0.6 : 1,
+                  }}
                   disabled={isLoading || websites.length === 0}
                 >
                   {isLoading
@@ -619,47 +1045,145 @@ const Popup: React.FC = () => {
             </form>
           </section>
 
-          <section className="px-6 py-6 border-b border-mono-gray-border last:border-b-0 bg-white">
-            <h3 className="text-[11px] font-bold mb-5 tracking-wider uppercase text-mono-black flex items-center gap-2">
-              <span className="w-1 h-4 bg-accent-purple rounded-full"></span>
+          <section
+            style={{
+              padding: "24px",
+              backgroundColor: colors.bg,
+            }}
+          >
+            <h3
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                marginBottom: "20px",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                color: colors.text,
+              }}
+            >
+              <span
+                style={{
+                  width: "4px",
+                  height: "16px",
+                  backgroundColor: colors.text,
+                  borderRadius: "2px",
+                }}
+              />
               Your Modes ({modes.length})
             </h3>
-            <div className="max-h-[400px] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-mono-gray-input [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-mono-gray-muted">
+            <div style={{ maxHeight: "400px", overflowY: "auto" }}>
               {modes.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-20 h-20 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-accent-purpleLight to-white flex items-center justify-center border border-accent-purpleLight">
-                    <span className="text-3xl">📝</span>
+                <div style={{ textAlign: "center", padding: "48px 0" }}>
+                  <div
+                    style={{
+                      width: "80px",
+                      height: "80px",
+                      margin: "0 auto 20px",
+                      borderRadius: "16px",
+                      backgroundColor: colors.cardBg,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      border: `1px solid ${colors.border}`,
+                    }}
+                  >
+                    <span style={{ fontSize: "28px" }}>📝</span>
                   </div>
-                  <p className="text-mono-gray-muted text-sm font-medium">
+                  <p
+                    style={{
+                      color: colors.textMuted,
+                      fontSize: "14px",
+                      fontWeight: 500,
+                    }}
+                  >
                     No modes yet. Create one above to get started!
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
+                  }}
+                >
                   {modes.map((mode) => (
                     <div
                       key={mode.id}
-                      className="flex justify-between items-center p-5 rounded-xl border-2 border-mono-gray-border bg-white hover:border-accent-purple hover:shadow-md transition-all"
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "20px",
+                        borderRadius: "12px",
+                        border: `2px solid ${colors.border}`,
+                        backgroundColor: colors.bg,
+                      }}
                     >
-                      <div className="flex-1 min-w-0 pr-4">
-                        <div className="font-bold text-sm tracking-tight text-mono-black">
+                      <div
+                        style={{ flex: 1, minWidth: 0, paddingRight: "16px" }}
+                      >
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            fontSize: "14px",
+                            color: colors.text,
+                          }}
+                        >
                           {mode.name}
                         </div>
-                        <div className="text-[11px] text-mono-gray-text font-medium mt-1">
+                        <div
+                          style={{
+                            fontSize: "11px",
+                            color: colors.textMuted,
+                            fontWeight: 500,
+                            marginTop: "4px",
+                          }}
+                        >
                           {mode.websites.length} website
                           {mode.websites.length !== 1 ? "s" : ""}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          flexShrink: 0,
+                        }}
+                      >
                         <button
-                          className="bg-white border-2 border-accent-blue px-3 py-1.5 rounded-lg text-[11px] cursor-pointer transition-all text-accent-blue font-semibold tracking-wide hover:-translate-y-0.5 hover:text-mono-black hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-mono-gray-light disabled:border-mono-gray-input disabled:text-mono-gray-text disabled:hover:bg-mono-gray-light disabled:hover:text-mono-gray-text whitespace-nowrap"
+                          style={{
+                            backgroundColor: "transparent",
+                            border: `2px solid ${colors.border}`,
+                            padding: "6px 12px",
+                            borderRadius: "8px",
+                            fontSize: "11px",
+                            cursor: isLoading ? "not-allowed" : "pointer",
+                            color: colors.text,
+                            fontWeight: 600,
+                            opacity: isLoading ? 0.5 : 1,
+                          }}
                           onClick={() => handleEditMode(mode)}
                           disabled={isLoading}
                         >
                           Edit
                         </button>
                         <button
-                          className="bg-white border-2 border-accent-red px-3 py-1.5 rounded-lg text-[11px] cursor-pointer transition-all text-accent-red font-semibold tracking-wide hover:-translate-y-0.5 hover:text-mono-black hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-mono-gray-light disabled:border-mono-gray-input disabled:text-mono-gray-text disabled:hover:bg-mono-gray-light disabled:hover:text-mono-gray-text whitespace-nowrap"
+                          style={{
+                            backgroundColor: "transparent",
+                            border: `2px solid ${colors.border}`,
+                            padding: "6px 12px",
+                            borderRadius: "8px",
+                            fontSize: "11px",
+                            cursor: isLoading ? "not-allowed" : "pointer",
+                            color: colors.text,
+                            fontWeight: 600,
+                            opacity: isLoading ? 0.5 : 1,
+                          }}
                           onClick={() => handleDeleteMode(mode.id)}
                           disabled={isLoading}
                         >
@@ -673,7 +1197,48 @@ const Popup: React.FC = () => {
             </div>
           </section>
         </>
-      )}
+      ) : currentView === "profile" ? (
+        <section
+          style={{
+            padding: "24px",
+            backgroundColor: colors.bg,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <p
+              style={{
+                color: colors.text,
+                fontSize: "14px",
+                fontWeight: 500,
+                marginBottom: "24px",
+              }}
+            >
+              {user?.email}
+            </p>
+            <button
+              style={{
+                padding: "12px 24px",
+                border: `2px solid ${colors.text}`,
+                borderRadius: "8px",
+                backgroundColor: "transparent",
+                color: colors.text,
+                fontWeight: 600,
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+              onClick={handleSignOut}
+            >
+              Sign Out
+            </button>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 };

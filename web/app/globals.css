@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Core monochrome palette */
+    --background: 0 0% 100%; /* #ffffff */
+    --foreground: 0 0% 6%; /* #0f0f0f */
+
+    /* Card */
+    --card: 0 0% 98%; /* #fafafa */
+    --card-foreground: 0 0% 6%;
+
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 6%;
+
+    /* Primary - main action color */
+    --primary: 0 0% 6%; /* #0f0f0f */
+    --primary-foreground: 0 0% 100%; /* #ffffff */
+
+    /* Secondary */
+    --secondary: 0 0% 96%; /* #f5f5f5 */
+    --secondary-foreground: 0 0% 6%;
+
+    /* Muted */
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%; /* #737373 */
+
+    /* Accent */
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 6%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border & Input */
+    --border: 0 0% 90%; /* #e5e5e5 */
+    --input: 0 0% 83%; /* #d4d4d4 */
+    --ring: 0 0% 6%;
+
+    --radius: 0.5rem;
+    --dot-base: #d4d4d4;
+    --dot-active: #0f0f0f;
+  }
+
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    --dot-base: #404040;
+    --dot-active: #ffffff;
+    /* Core monochrome palette - dark */
+    --background: 0 0% 6%; /* #0f0f0f */
+    --foreground: 0 0% 100%; /* #ffffff */
+
+    /* Card */
+    --card: 0 0% 9%; /* #171717 */
+    --card-foreground: 0 0% 100%;
+
+    /* Popover */
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 100%;
+
+    /* Primary */
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 6%;
+
+    /* Secondary */
+    --secondary: 0 0% 15%; /* #262626 */
+    --secondary-foreground: 0 0% 100%;
+
+    /* Muted */
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 45%; /* #737373 */
+
+    /* Accent */
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive */
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border & Input */
+    --border: 0 0% 15%; /* #262626 */
+    --input: 0 0% 25%; /* #404040 */
+    --ring: 0 0% 83%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
