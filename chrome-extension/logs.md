@@ -16,3 +16,5 @@
 | 11/21/25  | Supabase realtime        | 2.5   |
 | 11/22/25  | Web app                  | 2     |
 | 11/24/25  | Extension                | 1     |
+| 11/27/25  | Code                     | 3     |
+| 11/28/25  | Code                     | 3     |

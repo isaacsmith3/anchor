@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
+import { ScrollReveal } from "./scroll-reveal";
 
 const DISTRACTING_SITES = [
   "twitter.com",
@@ -61,7 +63,8 @@ export function Demo() {
       {/* Demo Header */}
       <div className="text-center mb-12">
         <h2 className="text-2xl lg:text-3xl font-bold mb-3">
-          Starts on the browser,<br className="hidden lg:block" /> stops on the phone.
+          Starts on the browser,
+          <br className="hidden lg:block" /> stops on the phone.
         </h2>
       </div>
 
@@ -130,7 +133,13 @@ export function Demo() {
                 }`}
                 title="Click to open Anchor extension"
               >
-                <span className="text-sm">⚓</span>
+                <Image
+                  src="/images/anchor-icon48.png"
+                  alt="Anchor"
+                  width={28}
+                  height={28}
+                  className="rounded-lg"
+                />
                 {isActive && (
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-[#171717]" />
                 )}
@@ -173,7 +182,7 @@ export function Demo() {
                   {!showPopup && (
                     <div className="text-center pt-2">
                       <p className="text-xs text-muted-foreground">
-                        👆 Click the ⚓ icon to start
+                        Click the anchor icon to start
                       </p>
                     </div>
                   )}
@@ -301,10 +310,6 @@ export function Demo() {
                 }`}
               >
                 <span>9:41</span>
-                <div className="flex gap-1">
-                  <span>📶</span>
-                  <span>🔋</span>
-                </div>
               </div>
 
               {/* App Header */}
@@ -350,9 +355,13 @@ export function Demo() {
                 ) : (
                   // Empty State
                   <div className="flex flex-col items-center justify-center h-[280px] text-center">
-                    <div className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center mb-3">
-                      <span className="text-xl">⚓</span>
-                    </div>
+                    <Image
+                      src="/images/anchor-icon48.png"
+                      alt="Anchor"
+                      width={28}
+                      height={28}
+                      className="mb-3 rounded-lg"
+                    />
                     <p className="text-sm font-medium mb-1">
                       No Active Session
                     </p>
@@ -370,7 +379,7 @@ export function Demo() {
                 }`}
               >
                 <div className="flex flex-col items-center gap-1">
-                  <span className="text-xs">⚓</span>
+                  <span className="text-xs">Anchor</span>
                   <div
                     className={`w-1 h-1 rounded-full ${
                       isActive ? "bg-white" : "bg-foreground"
@@ -378,7 +387,7 @@ export function Demo() {
                   />
                 </div>
                 <div className="flex flex-col items-center gap-1 opacity-40">
-                  <span className="text-xs">👤</span>
+                  <span className="text-xs">Profile</span>
                   <div className="w-1 h-1 rounded-full bg-transparent" />
                 </div>
               </div>
@@ -388,34 +397,60 @@ export function Demo() {
       </div>
 
       {/* Features List */}
-      <div className="grid md:grid-cols-3 gap-6 mt-20">
-        <div className="text-center p-6">
-          <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-card border border-border flex items-center justify-center">
-            <span className="text-xl">🔒</span>
+      <div className="flex flex-col gap-32 lg:gap-48 mt-40 max-w-5xl mx-auto px-6">
+        {/* Feature 1 - Number left, text right */}
+        <ScrollReveal delay={0}>
+          <div className="grid md:grid-cols-[200px_1fr] items-center gap-8 md:gap-16">
+            <div className="text-[120px] lg:text-[180px] font-bold text-muted-foreground/10 leading-none select-none tracking-tighter">
+              01
+            </div>
+            <div>
+              <h4 className="text-3xl lg:text-4xl font-semibold mb-4 tracking-tight">
+                Your rules, enforced
+              </h4>
+              <p className="text-lg lg:text-xl text-muted-foreground leading-relaxed">
+                Pick the sites that waste your time. We&apos;ll make sure you
+                can&apos;t access them when you&apos;re supposed to be working.
+              </p>
+            </div>
           </div>
-          <h4 className="font-semibold mb-2">Block Distractions</h4>
-          <p className="text-sm text-muted-foreground">
-            Create custom modes to block specific sites when you need to focus.
-          </p>
-        </div>
-        <div className="text-center p-6">
-          <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-card border border-border flex items-center justify-center">
-            <span className="text-xl">📱</span>
+        </ScrollReveal>
+
+        {/* Feature 2 - Text left, number right */}
+        <ScrollReveal delay={100}>
+          <div className="grid md:grid-cols-[1fr_200px] items-center gap-8 md:gap-16">
+            <div className="md:text-right md:order-1 order-2">
+              <h4 className="text-3xl lg:text-4xl font-semibold mb-4 tracking-tight">
+                Friction by design
+              </h4>
+              <p className="text-lg lg:text-xl text-muted-foreground leading-relaxed">
+                Getting distracted should be hard. Deactivating requires your
+                phone—so you actually have to think about it.
+              </p>
+            </div>
+            <div className="text-[120px] lg:text-[180px] font-bold text-muted-foreground/10 leading-none select-none tracking-tighter md:order-2 order-1 md:text-right">
+              02
+            </div>
           </div>
-          <h4 className="font-semibold mb-2">Control from Mobile</h4>
-          <p className="text-sm text-muted-foreground">
-            Start and stop sessions from your phone with NFC friction.
-          </p>
-        </div>
-        <div className="text-center p-6">
-          <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-card border border-border flex items-center justify-center">
-            <span className="text-xl">⚡</span>
+        </ScrollReveal>
+
+        {/* Feature 3 - Number left, text right */}
+        <ScrollReveal delay={200}>
+          <div className="grid md:grid-cols-[200px_1fr] items-center gap-8 md:gap-16">
+            <div className="text-[120px] lg:text-[180px] font-bold text-muted-foreground/10 leading-none select-none tracking-tighter">
+              03
+            </div>
+            <div>
+              <h4 className="text-3xl lg:text-4xl font-semibold mb-4 tracking-tight">
+                Always in sync
+              </h4>
+              <p className="text-lg lg:text-xl text-muted-foreground leading-relaxed">
+                Changes propagate instantly. Block a site on one device,
+                it&apos;s blocked everywhere. No delays, no loopholes.
+              </p>
+            </div>
           </div>
-          <h4 className="font-semibold mb-2">Real-time Sync</h4>
-          <p className="text-sm text-muted-foreground">
-            Changes sync instantly across all your devices and browsers.
-          </p>
-        </div>
+        </ScrollReveal>
       </div>
     </div>
   );
