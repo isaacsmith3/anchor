@@ -70,12 +70,36 @@ export default function PricingPage() {
           }}
         />
 
+        {/* Radial spotlight behind content */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: isDark
+              ? "radial-gradient(ellipse 50% 60% at 50% 50%, rgba(10, 10, 10, 0.9) 0%, rgba(10, 10, 10, 0.5) 40%, transparent 70%)"
+              : "radial-gradient(ellipse 50% 60% at 50% 50%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.5) 40%, transparent 70%)",
+          }}
+        />
+
         {/* Content */}
         <div className="relative z-10 max-w-md w-full text-center">
-          <h1 className="text-5xl lg:text-6xl font-bold mb-4 tracking-tight">
+          <h1
+            className="text-5xl lg:text-6xl font-bold mb-4 tracking-tight"
+            style={{
+              textShadow: isDark
+                ? "0 2px 20px rgba(0, 0, 0, 0.5)"
+                : "0 2px 20px rgba(255, 255, 255, 0.8)",
+            }}
+          >
             Simple pricing
           </h1>
-          <p className="text-lg text-muted-foreground mb-12">
+          <p
+            className="text-lg text-muted-foreground mb-12"
+            style={{
+              textShadow: isDark
+                ? "0 1px 10px rgba(0, 0, 0, 0.3)"
+                : "0 1px 10px rgba(255, 255, 255, 0.6)",
+            }}
+          >
             Focus shouldn&apos;t cost you anything.
           </p>
 
@@ -83,7 +107,7 @@ export default function PricingPage() {
             <div className="text-6xl lg:text-7xl font-bold mb-1 tracking-tight">
               $0
             </div>
-            <p className="text-muted-foreground mb-10">Forever free</p>
+            <p className="text-muted-foreground mb-10">Completely free</p>
 
             <ul className="text-left space-y-5 mb-10">
               <li className="flex items-center gap-4">
@@ -102,7 +126,7 @@ export default function PricingPage() {
                 <span className="w-6 h-6 rounded-full bg-foreground text-background flex items-center justify-center text-sm font-medium">
                   ✓
                 </span>
-                <span className="text-lg">iOS & Android app</span>
+                <span className="text-lg">iOS app</span>
               </li>
               <li className="flex items-center gap-4">
                 <span className="w-6 h-6 rounded-full bg-foreground text-background flex items-center justify-center text-sm font-medium">

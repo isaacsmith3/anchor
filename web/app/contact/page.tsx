@@ -70,12 +70,36 @@ export default function ContactPage() {
           }}
         />
 
+        {/* Radial spotlight behind content */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: isDark
+              ? "radial-gradient(ellipse 50% 60% at 50% 50%, rgba(10, 10, 10, 0.9) 0%, rgba(10, 10, 10, 0.5) 40%, transparent 70%)"
+              : "radial-gradient(ellipse 50% 60% at 50% 50%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.5) 40%, transparent 70%)",
+          }}
+        />
+
         {/* Content */}
         <div className="relative z-10 max-w-lg w-full text-center">
-          <h1 className="text-5xl lg:text-6xl font-bold mb-4 tracking-tight">
+          <h1
+            className="text-5xl lg:text-6xl font-bold mb-4 tracking-tight"
+            style={{
+              textShadow: isDark
+                ? "0 2px 20px rgba(0, 0, 0, 0.5)"
+                : "0 2px 20px rgba(255, 255, 255, 0.8)",
+            }}
+          >
             Get in touch
           </h1>
-          <p className="text-lg text-muted-foreground mb-12">
+          <p
+            className="text-lg text-muted-foreground mb-12"
+            style={{
+              textShadow: isDark
+                ? "0 1px 10px rgba(0, 0, 0, 0.3)"
+                : "0 1px 10px rgba(255, 255, 255, 0.6)",
+            }}
+          >
             Questions, feedback, or just want to say hi?
           </p>
 
@@ -84,10 +108,10 @@ export default function ContactPage() {
               Email us at
             </p>
             <a
-              href="mailto:hello@anchor.app"
+              href="mailto:isaacwallacesmith@gmail.com"
               className="text-2xl lg:text-3xl font-semibold hover:opacity-70 transition-opacity"
             >
-              hello@anchor.app
+              stevejobs@gmail.com
             </a>
           </div>
         </div>
