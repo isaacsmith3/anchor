@@ -143,7 +143,7 @@ export default function PricingPage() {
             </ul>
 
             <a
-              href="/auth/sign-up"
+              href="/contact"
               className="inline-block w-full border-2 border-foreground bg-foreground text-background hover:bg-transparent hover:text-foreground font-semibold text-lg px-8 py-4 rounded-xl transition-all duration-200"
             >
               Get Started
