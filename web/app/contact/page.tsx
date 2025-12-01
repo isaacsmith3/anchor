@@ -105,7 +105,7 @@ export default function ContactPage() {
                 : "0 1px 10px rgba(255, 255, 255, 0.6)",
             }}
           >
-            Questions, feedback, or just want to say hi?
+            Submit this form to be among the first to test Anchor in beta.
           </p>
 
           <div className="bg-card/80 backdrop-blur-sm border border-border rounded-2xl p-10 text-left">
@@ -150,7 +150,7 @@ export default function ContactPage() {
                     required
                     rows={4}
                     className="w-full rounded-lg border-2 border-input bg-background px-3 py-2 text-sm outline-none focus:border-foreground"
-                    placeholder="Tell us what you have in mind…"
+                    placeholder="Questions, feedback, or just want to say hi?"
                   />
                 </div>
 
