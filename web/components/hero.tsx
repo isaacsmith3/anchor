@@ -25,7 +25,7 @@ export function Hero() {
   const bgColor = isDark ? " #0f0f0f" : "rgb(255, 255, 255)";
 
   return (
-    <div className="relative w-full min-h-[500px] lg:min-h-[600px] flex items-center justify-center overflow-hidden">
+    <div className="relative w-full min-h-[400px] sm:min-h-[500px] lg:min-h-[600px] flex items-center justify-center overflow-hidden">
       {/* DotGrid Background - smaller dots, more spacing */}
       <div className="absolute inset-0">
         <DotGrid
@@ -86,9 +86,9 @@ export function Hero() {
       />
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col gap-5 items-center text-center px-6">
+      <div className="relative z-10 flex flex-col gap-4 sm:gap-5 items-center text-center px-4 sm:px-6">
         <h1
-          className="text-4xl lg:text-6xl font-bold !leading-tight mx-auto max-w-3xl"
+          className="text-3xl sm:text-4xl lg:text-6xl font-bold !leading-tight mx-auto max-w-3xl"
           style={{
             textShadow: isDark
               ? "0 2px 20px rgba(0, 0, 0, 0.5)"
@@ -98,7 +98,7 @@ export function Hero() {
           Lock In On What&apos;s Important
         </h1>
         <p
-          className="text-lg lg:text-xl text-muted-foreground mx-auto max-w-2xl"
+          className="text-base sm:text-lg lg:text-xl text-muted-foreground mx-auto max-w-2xl px-2"
           style={{
             textShadow: isDark
               ? "0 1px 10px rgba(0, 0, 0, 0.3)"
