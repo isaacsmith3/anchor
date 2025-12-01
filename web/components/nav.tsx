@@ -34,7 +34,7 @@ export function Nav() {
 
   return (
     <>
-      <nav className="w-full flex justify-between items-center border-b border-foreground/10 h-16 md:h-20 sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50 px-4 sm:px-6 lg:px-28">
+      <nav className="w-full flex justify-between items-center h-16 md:h-20 sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50 px-4 sm:px-6 lg:px-28">
         {/* Logo */}
         <div className="flex items-center justify-start font-semibold flex-shrink-0">
           <Link
