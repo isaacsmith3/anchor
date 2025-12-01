@@ -9,12 +9,12 @@ export default function Home() {
       <Nav />
 
       {/* Hero Section */}
-      <section className="flex-1 flex flex-col items-center justify-center px-6 py-20">
+      <section className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-12 sm:py-20">
         <Hero />
       </section>
 
       {/* Demo Section */}
-      <section className="px-6 py-20 border-border">
+      <section className="px-4 sm:px-6 py-12 sm:py-20 border-border">
         <Demo />
       </section>
 
