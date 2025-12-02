@@ -14,7 +14,7 @@ import { supabase } from "@/lib/supabase";
 import SessionCard from "@/components/SessionCard";
 import { router, useFocusEffect } from "expo-router";
 import { Colors } from "@/constants/theme";
-import NfcManager, { NfcTech } from "react-native-nfc-manager";
+// import NfcManager, { NfcTech } from "react-native-nfc-manager";
 
 // TODO: get rid of any imports
 
@@ -38,25 +38,6 @@ export default function HomeScreen() {
   const colors = isDarkMode ? Colors.dark : Colors.light;
 
   // Initialize NFC on mount
-  useEffect(() => {
-    const initNfc = async () => {
-      try {
-        const supported = await NfcManager.isSupported();
-        setIsNfcSupported(supported);
-        if (supported) {
-          await NfcManager.start();
-        }
-      } catch (error) {
-        console.warn("NFC initialization error:", error);
-        setIsNfcSupported(false);
-      }
-    };
-    initNfc();
-
-    return () => {
-      NfcManager.cancelTechnologyRequest().catch(() => {});
-    };
-  }, []);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -117,16 +98,16 @@ export default function HomeScreen() {
       setIsScanning(true);
 
       // Request NFC technology - this will prompt the user to tap
-      await NfcManager.requestTechnology(NfcTech.Ndef);
+      // await NfcManager.requestTechnology(NfcTech.Ndef);
 
       // Read the tag to verify tap occurred
-      const tag = await NfcManager.getTag();
+      // const tag = await NfcManager.getTag();
 
-      if (tag?.id) {
-        // Successfully read an NFC tag
-        // You could extend this to verify against a registered tag ID
-        return true;
-      }
+      // if (tag?.id) {
+      //   // Successfully read an NFC tag
+      //   // You could extend this to verify against a registered tag ID
+      //   return true;
+      // }
 
       return false;
     } catch (error: any) {
@@ -138,7 +119,7 @@ export default function HomeScreen() {
       return false;
     } finally {
       setIsScanning(false);
-      NfcManager.cancelTechnologyRequest().catch(() => {});
+      // NfcManager.cancelTechnologyRequest().catch(() => {});
     }
   };
 
