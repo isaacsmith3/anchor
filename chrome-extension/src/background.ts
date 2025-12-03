@@ -125,6 +125,56 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
       return true;
 
+    case "GET_SCHEDULES":
+      getSchedules()
+        .then((schedules) => {
+          sendResponse({ success: true, data: schedules });
+        })
+        .catch((error) => {
+          sendResponse({ success: false, error: error.message });
+        });
+      return true;
+
+    case "CREATE_SCHEDULE":
+      createSchedule(message.schedule)
+        .then(() => {
+          sendResponse({ success: true });
+        })
+        .catch((error) => {
+          sendResponse({ success: false, error: error.message });
+        });
+      return true;
+
+    case "UPDATE_SCHEDULE":
+      updateSchedule(message.scheduleId, message.schedule)
+        .then(() => {
+          sendResponse({ success: true });
+        })
+        .catch((error) => {
+          sendResponse({ success: false, error: error.message });
+        });
+      return true;
+
+    case "DELETE_SCHEDULE":
+      deleteSchedule(message.scheduleId)
+        .then(() => {
+          sendResponse({ success: true });
+        })
+        .catch((error) => {
+          sendResponse({ success: false, error: error.message });
+        });
+      return true;
+
+    case "TOGGLE_SCHEDULE":
+      toggleSchedule(message.scheduleId, message.isEnabled)
+        .then(() => {
+          sendResponse({ success: true });
+        })
+        .catch((error) => {
+          sendResponse({ success: false, error: error.message });
+        });
+      return true;
+
     default:
       sendResponse({ success: false, error: "Unknown message type" });
   }
@@ -420,12 +470,235 @@ async function deleteMode(modeId: string) {
     await stopBlockingSession();
   }
 
+  // Cascade delete: Delete all schedules that reference this mode
+  await deleteSchedulesByModeId(modeId);
+
   console.log("Deleted mode:", modeId);
+}
+
+// Schedule type definition
+type Schedule = {
+  id: string;
+  user_id: string;
+  name: string;
+  start_time: string; // HH:MM format
+  mode_id: string;
+  days_of_week: number[]; // 0-6, where 0=Sunday, 6=Saturday
+  is_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+// Get all schedules for the current user
+async function getSchedules(): Promise<Schedule[]> {
+  try {
+    const session = await getCurrentUserSession();
+    if (!session || !session.user) {
+      console.warn("Cannot fetch schedules: User not authenticated");
+      return [];
+    }
+
+    const { data, error } = await (supabase.from("schedules") as any)
+      .select("*")
+      .eq("user_id", session.user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching schedules:", error);
+      throw new Error(error.message);
+    }
+
+    return (data || []) as Schedule[];
+  } catch (error) {
+    console.error("Error getting schedules:", error);
+    throw error;
+  }
+}
+
+// Create a new schedule
+async function createSchedule(schedule: {
+  name: string;
+  start_time: string;
+  mode_id: string;
+  days_of_week: number[];
+}) {
+  try {
+    const session = await getCurrentUserSession();
+    if (!session || !session.user) {
+      throw new Error("User not authenticated");
+    }
+
+    // Validate days_of_week
+    if (
+      !Array.isArray(schedule.days_of_week) ||
+      schedule.days_of_week.length === 0
+    ) {
+      throw new Error("At least one day of the week must be selected");
+    }
+
+    // Validate that all day values are between 0-6
+    for (const day of schedule.days_of_week) {
+      if (day < 0 || day > 6) {
+        throw new Error("Invalid day of week value");
+      }
+    }
+
+    const { data, error } = await (supabase.from("schedules") as any).insert({
+      user_id: session.user.id,
+      name: schedule.name,
+      start_time: schedule.start_time,
+      mode_id: schedule.mode_id,
+      days_of_week: schedule.days_of_week,
+      is_enabled: true,
+    });
+
+    if (error) {
+      console.error("Error creating schedule:", error);
+      throw new Error(error.message);
+    }
+
+    console.log("Created schedule:", data);
+  } catch (error) {
+    console.error("Error creating schedule:", error);
+    throw error;
+  }
+}
+
+// Update an existing schedule
+async function updateSchedule(
+  scheduleId: string,
+  schedule: {
+    name: string;
+    start_time: string;
+    mode_id: string;
+    days_of_week: number[];
+  }
+) {
+  try {
+    const session = await getCurrentUserSession();
+    if (!session || !session.user) {
+      throw new Error("User not authenticated");
+    }
+
+    // Validate days_of_week
+    if (
+      !Array.isArray(schedule.days_of_week) ||
+      schedule.days_of_week.length === 0
+    ) {
+      throw new Error("At least one day of the week must be selected");
+    }
+
+    // Validate that all day values are between 0-6
+    for (const day of schedule.days_of_week) {
+      if (day < 0 || day > 6) {
+        throw new Error("Invalid day of week value");
+      }
+    }
+
+    const { data, error } = await (supabase.from("schedules") as any)
+      .update({
+        name: schedule.name,
+        start_time: schedule.start_time,
+        mode_id: schedule.mode_id,
+        days_of_week: schedule.days_of_week,
+      })
+      .eq("id", scheduleId)
+      .eq("user_id", session.user.id);
+
+    if (error) {
+      console.error("Error updating schedule:", error);
+      throw new Error(error.message);
+    }
+
+    console.log("Updated schedule:", scheduleId);
+  } catch (error) {
+    console.error("Error updating schedule:", error);
+    throw error;
+  }
+}
+
+// Delete a schedule
+async function deleteSchedule(scheduleId: string) {
+  try {
+    const session = await getCurrentUserSession();
+    if (!session || !session.user) {
+      throw new Error("User not authenticated");
+    }
+
+    const { error } = await (supabase.from("schedules") as any)
+      .delete()
+      .eq("id", scheduleId)
+      .eq("user_id", session.user.id);
+
+    if (error) {
+      console.error("Error deleting schedule:", error);
+      throw new Error(error.message);
+    }
+
+    console.log("Deleted schedule:", scheduleId);
+  } catch (error) {
+    console.error("Error deleting schedule:", error);
+    throw error;
+  }
+}
+
+// Delete all schedules for a specific mode (cascading delete)
+async function deleteSchedulesByModeId(modeId: string) {
+  try {
+    const session = await getCurrentUserSession();
+    if (!session || !session.user) {
+      console.warn("Cannot delete schedules: User not authenticated");
+      return;
+    }
+
+    const { error } = await (supabase.from("schedules") as any)
+      .delete()
+      .eq("mode_id", modeId)
+      .eq("user_id", session.user.id);
+
+    if (error) {
+      console.error("Error deleting schedules for mode:", error);
+      // Don't throw - this is a cascading operation, shouldn't fail mode deletion
+    } else {
+      console.log(`Deleted all schedules for mode: ${modeId}`);
+    }
+  } catch (error) {
+    console.error("Error deleting schedules for mode:", error);
+    // Don't throw - this is a cascading operation
+  }
+}
+
+// Toggle schedule enabled state
+async function toggleSchedule(scheduleId: string, isEnabled: boolean) {
+  try {
+    const session = await getCurrentUserSession();
+    if (!session || !session.user) {
+      throw new Error("User not authenticated");
+    }
+
+    const { error } = await (supabase.from("schedules") as any)
+      .update({ is_enabled: isEnabled })
+      .eq("id", scheduleId)
+      .eq("user_id", session.user.id);
+
+    if (error) {
+      console.error("Error toggling schedule:", error);
+      throw new Error(error.message);
+    }
+
+    console.log("Toggled schedule:", scheduleId, "to", isEnabled);
+  } catch (error) {
+    console.error("Error toggling schedule:", error);
+    throw error;
+  }
 }
 
 // Start a blocking session with a specific mode
 // Requires that no other session is currently active
-async function startBlockingSession(modeId: string) {
+async function startBlockingSession(
+  modeId: string,
+  fromSchedule: boolean = false
+) {
   const modes = await getModes();
   const mode = modes.find((m) => m.id === modeId);
 
@@ -436,9 +709,17 @@ async function startBlockingSession(modeId: string) {
   // Check if there's already an active session
   const activeMode = await getActiveMode();
   if (activeMode && activeMode.id !== modeId) {
-    throw new Error(
-      `A blocking session is already active with "${activeMode.name}". Please stop it first before starting a new one.`
-    );
+    // If this is from a schedule, override the existing session
+    if (fromSchedule) {
+      console.log(
+        `[Schedule] Overriding active session "${activeMode.name}" with scheduled mode`
+      );
+      await stopBlockingSession();
+    } else {
+      throw new Error(
+        `A blocking session is already active with "${activeMode.name}". Please stop it first before starting a new one.`
+      );
+    }
   }
 
   // If the same mode is already active, do nothing
@@ -653,12 +934,119 @@ async function requestUnlock(url: string) {
   });
 }
 
-// Listen for alarms (for temporary unlocks)
+// Check and trigger schedules that should run now
+async function checkAndTriggerSchedules() {
+  try {
+    const session = await getCurrentUserSession();
+    if (!session || !session.user) {
+      console.log("[Schedule] Skipping schedule check: user not authenticated");
+      return;
+    }
+
+    const now = new Date();
+    const currentDayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTimeStr = `${String(currentHour).padStart(2, "0")}:${String(
+      currentMinute
+    ).padStart(2, "0")}`;
+
+    console.log(
+      `[Schedule] Checking schedules at ${currentTimeStr} on day ${currentDayOfWeek}`
+    );
+
+    // Fetch all enabled schedules
+    const schedules = await getSchedules();
+    const enabledSchedules = schedules.filter((s) => s.is_enabled);
+
+    // Find schedules that match current day and time
+    const matchingSchedules = enabledSchedules.filter((schedule) => {
+      // Check if current day is in the schedule's days_of_week
+      const dayMatches = schedule.days_of_week.includes(currentDayOfWeek);
+
+      // Check if time matches (within 1 minute window)
+      const scheduleTime = schedule.start_time;
+      const [scheduleHour, scheduleMinute] = scheduleTime
+        .split(":")
+        .map(Number);
+      const timeMatches =
+        scheduleHour === currentHour && scheduleMinute === currentMinute;
+
+      return dayMatches && timeMatches;
+    });
+
+    if (matchingSchedules.length === 0) {
+      console.log("[Schedule] No matching schedules found");
+      return;
+    }
+
+    console.log(
+      `[Schedule] Found ${matchingSchedules.length} matching schedule(s)`
+    );
+
+    // Process each matching schedule
+    // If multiple schedules match, process them in order (last one wins)
+    for (const schedule of matchingSchedules) {
+      try {
+        // Verify the mode still exists
+        const modes = await getModes();
+        const mode = modes.find((m) => m.id === schedule.mode_id);
+
+        if (!mode) {
+          console.warn(
+            `[Schedule] Schedule "${schedule.name}" references deleted mode ${schedule.mode_id}, skipping and disabling schedule`
+          );
+          // Disable the schedule since its mode no longer exists
+          try {
+            await toggleSchedule(schedule.id, false);
+          } catch (toggleError) {
+            console.error("Error disabling orphaned schedule:", toggleError);
+          }
+          continue;
+        }
+
+        console.log(
+          `[Schedule] Triggering schedule "${schedule.name}" with mode "${mode.name}"`
+        );
+
+        // Start the blocking session (this will override any existing session)
+        // Wrap in try-catch to handle any errors from startBlockingSession
+        try {
+          await startBlockingSession(schedule.mode_id, true);
+        } catch (sessionError) {
+          // If mode not found error, disable the schedule
+          if (
+            sessionError instanceof Error &&
+            sessionError.message.includes("Mode not found")
+          ) {
+            console.warn(
+              `[Schedule] Mode not found for schedule "${schedule.name}", disabling schedule`
+            );
+            await toggleSchedule(schedule.id, false);
+          } else {
+            throw sessionError; // Re-throw other errors
+          }
+        }
+      } catch (error) {
+        console.error(
+          `[Schedule] Error triggering schedule "${schedule.name}":`,
+          error
+        );
+      }
+    }
+  } catch (error) {
+    console.error("[Schedule] Error checking schedules:", error);
+  }
+}
+
+// Listen for alarms (for temporary unlocks and schedule checks)
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name.startsWith("reblock_")) {
     const siteId = alarm.name.replace("reblock_", "");
     console.log("Re-blocking site:", siteId);
     // TODO: Re-enable blocking rule
+  } else if (alarm.name === "check_schedules") {
+    checkAndTriggerSchedules();
   }
 });
 
@@ -767,6 +1155,15 @@ async function initializeRealtimeSubscription(force = false) {
   }
 }
 
+// Initialize schedule checking alarm
+async function initializeScheduleAlarm() {
+  // Create an alarm that fires every minute to check schedules
+  chrome.alarms.create("check_schedules", {
+    periodInMinutes: 1,
+  });
+  console.log("Initialized schedule checking alarm (runs every minute)");
+}
+
 // Initialize on startup
 (async () => {
   // Restore blocking rules from local storage first
@@ -778,4 +1175,9 @@ async function initializeRealtimeSubscription(force = false) {
   // Then restore from Supabase and set up real-time subscription
   await restoreActiveSessionFromSupabase();
   await initializeRealtimeSubscription();
+
+  // Set up schedule checking
+  await initializeScheduleAlarm();
+  // Also check immediately on startup in case we missed a trigger while browser was closed
+  await checkAndTriggerSchedules();
 })();
