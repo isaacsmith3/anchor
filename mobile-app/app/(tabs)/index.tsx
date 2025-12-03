@@ -8,13 +8,11 @@ import {
   ActivityIndicator,
   RefreshControl,
   Image,
-  Platform,
 } from "react-native";
 import { supabase } from "@/lib/supabase";
 import SessionCard from "@/components/SessionCard";
 import { router, useFocusEffect } from "expo-router";
 import { Colors } from "@/constants/theme";
-// import NfcManager, { NfcTech } from "react-native-nfc-manager";
 
 // TODO: get rid of any imports
 
@@ -31,13 +29,9 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isStopping, setIsStopping] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [isNfcSupported, setIsNfcSupported] = useState<boolean | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
 
   const isDarkMode = !!session;
   const colors = isDarkMode ? Colors.dark : Colors.light;
-
-  // Initialize NFC on mount
 
   useFocusEffect(
     React.useCallback(() => {
@@ -87,73 +81,7 @@ export default function HomeScreen() {
     }
   };
 
-  // Verify NFC tap before allowing session deactivation
-  const verifyNfcTap = async (): Promise<boolean> => {
-    // Skip NFC on web or unsupported devices
-    if (Platform.OS === "web" || !isNfcSupported) {
-      return true;
-    }
-
-    try {
-      setIsScanning(true);
-
-      // Request NFC technology - this will prompt the user to tap
-      // await NfcManager.requestTechnology(NfcTech.Ndef);
-
-      // Read the tag to verify tap occurred
-      // const tag = await NfcManager.getTag();
-
-      // if (tag?.id) {
-      //   // Successfully read an NFC tag
-      //   // You could extend this to verify against a registered tag ID
-      //   return true;
-      // }
-
-      return false;
-    } catch (error: any) {
-      // User cancelled or timeout
-      if (error.message?.includes("cancelled")) {
-        return false;
-      }
-      console.warn("NFC error:", error);
-      return false;
-    } finally {
-      setIsScanning(false);
-      // NfcManager.cancelTechnologyRequest().catch(() => {});
-    }
-  };
-
   const deactivateSession = async (sessionId: string) => {
-    // First, require NFC tap verification
-    if (isNfcSupported && Platform.OS !== "web") {
-      Alert.alert(
-        "Tap to Unlock",
-        "Hold your phone near your Anchor device to stop the session",
-        [
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
-          {
-            text: "Ready to Tap",
-            onPress: async () => {
-              const verified = await verifyNfcTap();
-              if (verified) {
-                await performDeactivation(sessionId);
-              } else {
-                Alert.alert(
-                  "NFC Required",
-                  "Please tap your Anchor device to stop the session"
-                );
-              }
-            },
-          },
-        ]
-      );
-      return;
-    }
-
-    // Fallback for devices without NFC
     await performDeactivation(sessionId);
   };
 
@@ -295,7 +223,6 @@ export default function HomeScreen() {
             session={session}
             onStop={deactivateSession}
             isLoading={isStopping}
-            isScanning={isScanning}
             isDarkMode={isDarkMode}
           />
         ) : (
