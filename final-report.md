@@ -2,7 +2,7 @@
 
 ## Summary
 
-Anchor is a cross-platform website blocking application designed to help users maintain focus by creating real friction when accessing distracting websites. The system consists of a Chrome extension that blocks websites using declarativeNetRequest APIs, a React Native mobile app with NFC unlocking capabilities, and a Next.js web application—all synchronized in real-time through Supabase. Users can create custom blocking modes with specific website lists, schedule automatic blocking sessions, and unlock sessions using a physical NFC device (the "Brick"), creating intentional friction that prevents impulsive browsing.
+Anchor is a cross-platform website blocking application designed to help users maintain focus by creating real friction when accessing distracting websites. The system consists of a Chrome extension that blocks websites using declarativeNetRequest APIs, a React Native mobile app, and a Next.js web application—all synchronized in real-time through Supabase. Users can create custom blocking modes with specific website lists and schedule automatic blocking sessions, creating intentional friction that prevents impulsive browsing.
 
 ## Diagrams, Demo Video or GIF
 
@@ -16,7 +16,7 @@ This project provided deep learning across multiple domains:
 
 2. **Real-Time Synchronization**: Implementing real-time data synchronization across multiple platforms using Supabase's PostgreSQL change streams required understanding WebSocket connections, event-driven architectures, and handling race conditions when multiple devices update the same state simultaneously.
 
-3. **Cross-Platform Development**: Building a cohesive experience across Chrome extension, React Native mobile app, and Next.js web app taught me how to design shared data models, handle platform-specific constraints (like NFC on mobile), and maintain consistent UX patterns across different interaction paradigms.
+3. **Cross-Platform Development**: Building a cohesive experience across Chrome extension, React Native mobile app, and Next.js web app taught me how to design shared data models, handle platform-specific constraints, and maintain consistent UX patterns across different interaction paradigms.
 
 4. **Database Design & Security**: Implementing Row Level Security (RLS) policies in Supabase, designing efficient database schemas for blocking sessions and schedules, and ensuring proper authentication flows across all platforms.
 
@@ -38,7 +38,7 @@ AI was instrumental throughout the development process:
 
 2. **Debugging Complex Issues**: When encountering issues with Supabase real-time subscriptions not firing correctly or Chrome extension state synchronization problems, AI helped identify edge cases and suggest debugging strategies.
 
-3. **API Documentation Navigation**: AI assisted in understanding and implementing complex APIs like Chrome's declarativeNetRequest, Supabase's real-time channels, and React Native NFC manager, translating documentation into working code.
+3. **API Documentation Navigation**: AI assisted in understanding and implementing complex APIs like Chrome's declarativeNetRequest and Supabase's real-time channels, translating documentation into working code.
 
 4. **Code Refactoring**: Used AI to refactor code for better organization, extract reusable functions, and improve error handling patterns across the codebase.
 
@@ -46,11 +46,11 @@ AI was instrumental throughout the development process:
 
 ## Why This Project is Interesting to You
 
-Anchor addresses a personal pain point: the ease with which digital distractions can derail productivity. What makes this project particularly interesting is the philosophy of "real friction"—rather than making blocking easy to bypass, Anchor introduces intentional barriers (like requiring a physical NFC tap) that force users to pause and consider whether they truly need to access a blocked site. This approach respects user agency while providing meaningful support for focus.
+Anchor addresses a personal pain point: the ease with which digital distractions can derail productivity. What makes this project particularly interesting is the philosophy of "real friction"—rather than making blocking easy to bypass, Anchor introduces intentional barriers that force users to pause and consider whether they truly need to access a blocked site. This approach respects user agency while providing meaningful support for focus.
 
 The technical challenge of building a seamless, real-time synchronized experience across three different platforms (browser extension, mobile app, web app) was also compelling. Each platform has unique constraints and capabilities, and designing a system that works cohesively across all of them required careful architectural decisions.
 
-Additionally, the project touches on deeper questions about digital wellness, self-control, and how technology can be designed to support rather than exploit human psychology. The physical "Brick" device concept bridges the digital and physical worlds in a way that makes the act of unlocking more intentional and meaningful.
+Additionally, the project touches on deeper questions about digital wellness, self-control, and how technology can be designed to support rather than exploit human psychology.
 
 ## Key Learnings from the Project
 
@@ -61,8 +61,6 @@ Additionally, the project touches on deeper questions about digital wellness, se
 3. **Cross-Platform Authentication Consistency**: Maintaining authenticated sessions across Chrome extension, mobile app, and web app using Supabase Auth required understanding token refresh mechanisms, handling session expiration gracefully, and ensuring that authentication state changes in one platform are reflected in others. I implemented session persistence in Chrome storage and proper token refresh logic to handle long-running extension sessions.
 
 4. **Scheduled Blocking Requires Robust Background Processing**: Implementing scheduled blocking sessions that automatically start at specified times required using Chrome's `alarms` API, handling timezone conversions, checking schedules every minute, and ensuring the extension remains functional even when the browser is closed. This taught me about Chrome extension lifecycle management and background task scheduling.
-
-5. **NFC Integration Adds Physical Friction**: Integrating NFC unlocking in the mobile app (though not fully implemented in the current version) required understanding React Native's native module system, platform-specific permissions, and designing a UX flow that makes the physical tap feel intentional rather than cumbersome.
 
 ## Technical Architecture & System Design
 
@@ -141,5 +139,4 @@ Additionally, the project touches on deeper questions about digital wellness, se
 | 11/29/25 | Final touches           | 1      |
 |          | **Total**               | **39** |
 
-
-[Teams Post Link](https://teams.microsoft.com/l/message/19:ac4bc382e82e4ef6a3b61989d55cf4b8@thread.tacv2/1764633098505?tenantId=c6fc6e9b-51fb-48a8-b779-9ee564b40413&groupId=89222c8a-2991-4873-8d7d-10b1cacaebf4&parentMessageId=1764633098505&teamName=CS%20452%20001%20(Fall%202025)&channelName=Report%20-%20Project%20Pitch&createdTime=1764633098505)
+[Teams Post Link](<https://teams.microsoft.com/l/message/19:ac4bc382e82e4ef6a3b61989d55cf4b8@thread.tacv2/1764633098505?tenantId=c6fc6e9b-51fb-48a8-b779-9ee564b40413&groupId=89222c8a-2991-4873-8d7d-10b1cacaebf4&parentMessageId=1764633098505&teamName=CS%20452%20001%20(Fall%202025)&channelName=Report%20-%20Project%20Pitch&createdTime=1764633098505>)

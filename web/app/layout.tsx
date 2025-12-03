@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "Anchor - Lock in on What Matters",
   description:
-    "Anchor blocks distracting websites with NFC friction. Stay focused and get things done.",
+    "Anchor blocks distracting websites. Stay focused and get things done.",
 };
 
 const montserrat = Montserrat({

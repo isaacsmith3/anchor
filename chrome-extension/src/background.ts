@@ -930,7 +930,7 @@ async function requestUnlock(url: string) {
     type: "basic",
     iconUrl: "icon48.png",
     title: "Unlock Request Sent",
-    message: `Waiting for NFC verification to unlock ${url}`,
+    message: `Waiting for verification to unlock ${url}`,
   });
 }
 
