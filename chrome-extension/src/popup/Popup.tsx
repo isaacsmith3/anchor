@@ -14,7 +14,19 @@ interface Mode {
   created_at: string;
 }
 
-type View = "blocking" | "modes" | "profile";
+interface Schedule {
+  id: string;
+  user_id: string;
+  name: string;
+  start_time: string;
+  mode_id: string;
+  days_of_week: number[];
+  is_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+type View = "blocking" | "modes" | "schedules" | "profile";
 
 const Popup: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -31,6 +43,16 @@ const Popup: React.FC = () => {
   const [websiteInput, setWebsiteInput] = useState("");
   const [websites, setWebsites] = useState<string[]>([]);
 
+  // Schedule state
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [scheduleName, setScheduleName] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("");
+  const [selectedScheduleModeId, setSelectedScheduleModeId] = useState<
+    string | null
+  >(null);
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+
   // Check authentication status on mount
   useEffect(() => {
     console.log("Popup: Component mounted, checking auth...");
@@ -45,6 +67,7 @@ const Popup: React.FC = () => {
 
     loadModes();
     loadActiveMode();
+    loadSchedules();
 
     const initializeRealtimeSync = async () => {
       try {
@@ -174,12 +197,22 @@ const Popup: React.FC = () => {
     setIsAuthenticated(false);
   };
 
-  // Redirect to blocking view if a session becomes active while on modes page
+  // Redirect to blocking view if a session becomes active while on modes or schedules page
   useEffect(() => {
-    if (activeMode && currentView === "modes") {
+    if (
+      activeMode &&
+      (currentView === "modes" || currentView === "schedules")
+    ) {
       setCurrentView("blocking");
     }
   }, [activeMode, currentView]);
+
+  // Load schedules when switching to schedules view
+  useEffect(() => {
+    if (isAuthenticated && currentView === "schedules") {
+      loadSchedules();
+    }
+  }, [isAuthenticated, currentView]);
 
   // Set selected mode to active mode when it changes
   useEffect(() => {
@@ -231,6 +264,20 @@ const Popup: React.FC = () => {
       }
     } catch (error) {
       console.error("Error loading active mode:", error);
+    }
+  };
+
+  const loadSchedules = async () => {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "GET_SCHEDULES",
+      });
+
+      if (response.success) {
+        setSchedules(response.data || []);
+      }
+    } catch (error) {
+      console.error("Error loading schedules:", error);
     }
   };
 
@@ -361,6 +408,186 @@ const Popup: React.FC = () => {
       console.error("Error deleting mode:", error);
       alert("Error deleting mode");
     }
+  };
+
+  // Schedule handlers
+  const handleCreateSchedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (activeMode) {
+      alert(
+        `Cannot create or edit schedules while a blocking session is active. Please stop the session with "${activeMode.name}" first.`
+      );
+      return;
+    }
+
+    if (!scheduleName.trim()) {
+      alert("Please enter a schedule name");
+      return;
+    }
+
+    if (!scheduleTime) {
+      alert("Please select a start time");
+      return;
+    }
+
+    if (!selectedScheduleModeId) {
+      alert("Please select a blocking mode");
+      return;
+    }
+
+    if (selectedDays.length === 0) {
+      alert("Please select at least one day of the week");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: editingSchedule ? "UPDATE_SCHEDULE" : "CREATE_SCHEDULE",
+        scheduleId: editingSchedule?.id,
+        schedule: {
+          name: scheduleName.trim(),
+          start_time: scheduleTime,
+          mode_id: selectedScheduleModeId,
+          days_of_week: selectedDays,
+        },
+      });
+
+      if (!response) {
+        console.error("No response from background script");
+        alert(
+          "Failed to save schedule: No response from extension. Please reload the extension."
+        );
+        return;
+      }
+
+      if (response.success) {
+        setScheduleName("");
+        setScheduleTime("");
+        setSelectedScheduleModeId(null);
+        setSelectedDays([]);
+        setEditingSchedule(null);
+        await loadSchedules();
+      } else {
+        alert(
+          "Failed to save schedule: " + (response.error || "Unknown error")
+        );
+      }
+    } catch (error) {
+      console.error("Error saving schedule:", error);
+      alert(
+        "Error saving schedule: " +
+          (error instanceof Error ? error.message : "Unknown error")
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEditSchedule = (schedule: Schedule) => {
+    if (activeMode) {
+      alert(
+        `Cannot edit schedules while a blocking session is active. Please stop the session with "${activeMode.name}" first.`
+      );
+      return;
+    }
+    setEditingSchedule(schedule);
+    setScheduleName(schedule.name);
+    setScheduleTime(schedule.start_time);
+    setSelectedScheduleModeId(schedule.mode_id);
+    setSelectedDays([...schedule.days_of_week]);
+  };
+
+  const handleCancelEditSchedule = () => {
+    setEditingSchedule(null);
+    setScheduleName("");
+    setScheduleTime("");
+    setSelectedScheduleModeId(null);
+    setSelectedDays([]);
+  };
+
+  const handleDeleteSchedule = async (scheduleId: string) => {
+    if (activeMode) {
+      alert(
+        `Cannot delete schedules while a blocking session is active. Please stop the session with "${activeMode.name}" first.`
+      );
+      return;
+    }
+
+    if (!confirm("Are you sure you want to delete this schedule?")) {
+      return;
+    }
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "DELETE_SCHEDULE",
+        scheduleId: scheduleId,
+      });
+
+      if (response.success) {
+        await loadSchedules();
+      } else {
+        alert("Failed to delete schedule: " + response.error);
+      }
+    } catch (error) {
+      console.error("Error deleting schedule:", error);
+      alert("Error deleting schedule");
+    }
+  };
+
+  const handleToggleSchedule = async (
+    scheduleId: string,
+    isEnabled: boolean
+  ) => {
+    if (activeMode) {
+      alert(
+        `Cannot toggle schedules while a blocking session is active. Please stop the session with "${activeMode.name}" first.`
+      );
+      return;
+    }
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "TOGGLE_SCHEDULE",
+        scheduleId: scheduleId,
+        isEnabled: !isEnabled,
+      });
+
+      if (response.success) {
+        await loadSchedules();
+      } else {
+        alert("Failed to toggle schedule: " + response.error);
+      }
+    } catch (error) {
+      console.error("Error toggling schedule:", error);
+      alert("Error toggling schedule");
+    }
+  };
+
+  const handleToggleDay = (day: number) => {
+    if (selectedDays.includes(day)) {
+      setSelectedDays(selectedDays.filter((d) => d !== day));
+    } else {
+      setSelectedDays([...selectedDays, day]);
+    }
+  };
+
+  const formatDaysOfWeek = (days: number[]): string => {
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    if (days.length === 7) return "Every day";
+    if (days.length === 0) return "No days";
+    const sortedDays = [...days].sort((a, b) => a - b);
+    return sortedDays.map((d) => dayNames[d]).join(", ");
+  };
+
+  const formatTime = (time: string): string => {
+    const [hours, minutes] = time.split(":");
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
   };
 
   const handleToggleBlocking = async () => {
@@ -510,53 +737,55 @@ const Popup: React.FC = () => {
           backgroundColor: colors.bg,
         }}
       >
-        {(["blocking", "modes", "profile"] as View[]).map((tab) => {
-          const isActive = currentView === tab;
-          const isDisabled = activeMode && tab !== "blocking";
-          return (
-            <button
-              key={tab}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "12px",
-                letterSpacing: "0.05em",
-                textTransform: "uppercase",
-                background: "none",
-                border: "none",
-                cursor: isDisabled ? "not-allowed" : "pointer",
-                opacity: isDisabled ? 0.4 : 1,
-                color: isActive ? colors.text : colors.textMuted,
-                fontWeight: isActive ? 700 : 500,
-                padding: 0,
-              }}
-              onClick={() => {
-                if (tab === "blocking") {
-                  setCurrentView("blocking");
-                } else if (!activeMode) {
-                  setCurrentView(tab);
-                } else {
-                  alert(
-                    `Cannot access ${tab} page while a blocking session is active. Please stop the session first.`
-                  );
-                }
-              }}
-              disabled={!!isDisabled}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              <span
+        {(["blocking", "modes", "schedules", "profile"] as View[]).map(
+          (tab) => {
+            const isActive = currentView === tab;
+            const isDisabled = activeMode && tab !== "blocking";
+            return (
+              <button
+                key={tab}
                 style={{
-                  width: "6px",
-                  height: "6px",
-                  borderRadius: "50%",
-                  backgroundColor: isActive ? colors.text : "transparent",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "12px",
+                  letterSpacing: "0.05em",
+                  textTransform: "uppercase",
+                  background: "none",
+                  border: "none",
+                  cursor: isDisabled ? "not-allowed" : "pointer",
+                  opacity: isDisabled ? 0.4 : 1,
+                  color: isActive ? colors.text : colors.textMuted,
+                  fontWeight: isActive ? 700 : 500,
+                  padding: 0,
                 }}
-              />
-            </button>
-          );
-        })}
+                onClick={() => {
+                  if (tab === "blocking") {
+                    setCurrentView("blocking");
+                  } else if (!activeMode) {
+                    setCurrentView(tab);
+                  } else {
+                    alert(
+                      `Cannot access ${tab} page while a blocking session is active. Please stop the session first.`
+                    );
+                  }
+                }}
+                disabled={!!isDisabled}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                <span
+                  style={{
+                    width: "6px",
+                    height: "6px",
+                    borderRadius: "50%",
+                    backgroundColor: isActive ? colors.text : "transparent",
+                  }}
+                />
+              </button>
+            );
+          }
+        )}
       </div>
 
       {/* Content based on current view */}
@@ -1214,6 +1443,506 @@ const Popup: React.FC = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          </section>
+        </>
+      ) : currentView === "schedules" ? (
+        <>
+          <section
+            style={{
+              padding: "24px",
+              borderBottom: `1px solid ${colors.border}`,
+              backgroundColor: colors.bg,
+            }}
+          >
+            <h3
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                marginBottom: "24px",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                color: colors.text,
+              }}
+            >
+              <span
+                style={{
+                  width: "4px",
+                  height: "16px",
+                  backgroundColor: colors.text,
+                  borderRadius: "2px",
+                }}
+              />
+              {editingSchedule ? "Edit Schedule" : "Create New Schedule"}
+            </h3>
+            <form onSubmit={handleCreateSchedule}>
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  htmlFor="schedule-name"
+                  style={{
+                    display: "block",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    marginBottom: "12px",
+                    color: colors.text,
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  Schedule Name
+                </label>
+                <input
+                  type="text"
+                  id="schedule-name"
+                  value={scheduleName}
+                  onChange={(e) => setScheduleName(e.target.value)}
+                  placeholder="Enter schedule name"
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    border: `2px solid ${colors.inputBorder}`,
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    backgroundColor: colors.bg,
+                    color: colors.text,
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  htmlFor="schedule-time"
+                  style={{
+                    display: "block",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    marginBottom: "12px",
+                    color: colors.text,
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  Start Time
+                </label>
+                <input
+                  type="time"
+                  id="schedule-time"
+                  value={scheduleTime}
+                  onChange={(e) => setScheduleTime(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    border: `2px solid ${colors.inputBorder}`,
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    backgroundColor: colors.bg,
+                    color: colors.text,
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  htmlFor="schedule-mode"
+                  style={{
+                    display: "block",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    marginBottom: "12px",
+                    color: colors.text,
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  Blocking Mode
+                </label>
+                {modes.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "12px 16px",
+                      border: `2px solid ${colors.inputBorder}`,
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      backgroundColor: colors.cardBg,
+                      color: colors.textMuted,
+                      textAlign: "center",
+                    }}
+                  >
+                    No modes available. Create a mode first.
+                  </div>
+                ) : (
+                  <select
+                    id="schedule-mode"
+                    value={selectedScheduleModeId || ""}
+                    onChange={(e) => setSelectedScheduleModeId(e.target.value)}
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "12px 16px",
+                      border: `2px solid ${colors.inputBorder}`,
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      backgroundColor: colors.bg,
+                      color: colors.text,
+                      outline: "none",
+                      boxSizing: "border-box",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <option value="">Select a mode</option>
+                    {modes.map((mode) => (
+                      <option key={mode.id} value={mode.id}>
+                        {mode.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div style={{ marginBottom: "24px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    marginBottom: "12px",
+                    color: colors.text,
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  Days of Week
+                </label>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "8px",
+                  }}
+                >
+                  {[
+                    { value: 0, label: "Sun" },
+                    { value: 1, label: "Mon" },
+                    { value: 2, label: "Tue" },
+                    { value: 3, label: "Wed" },
+                    { value: 4, label: "Thu" },
+                    { value: 5, label: "Fri" },
+                    { value: 6, label: "Sat" },
+                  ].map((day) => (
+                    <button
+                      key={day.value}
+                      type="button"
+                      onClick={() => handleToggleDay(day.value)}
+                      style={{
+                        padding: "8px 16px",
+                        border: `2px solid ${
+                          selectedDays.includes(day.value)
+                            ? colors.text
+                            : colors.border
+                        }`,
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        backgroundColor: selectedDays.includes(day.value)
+                          ? colors.text
+                          : "transparent",
+                        color: selectedDays.includes(day.value)
+                          ? colors.bg
+                          : colors.text,
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      {day.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+                {editingSchedule && (
+                  <button
+                    type="button"
+                    style={{
+                      flex: 1,
+                      padding: "12px 20px",
+                      border: `2px solid ${colors.border}`,
+                      borderRadius: "8px",
+                      backgroundColor: "transparent",
+                      color: colors.text,
+                      fontWeight: 600,
+                      fontSize: "13px",
+                      cursor: "pointer",
+                    }}
+                    onClick={handleCancelEditSchedule}
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  style={{
+                    flex: 1,
+                    padding: "12px 20px",
+                    border: `2px solid ${colors.text}`,
+                    borderRadius: "8px",
+                    backgroundColor:
+                      isLoading ||
+                      !scheduleName.trim() ||
+                      !scheduleTime ||
+                      !selectedScheduleModeId ||
+                      selectedDays.length === 0
+                        ? colors.cardBg
+                        : "transparent",
+                    color:
+                      isLoading ||
+                      !scheduleName.trim() ||
+                      !scheduleTime ||
+                      !selectedScheduleModeId ||
+                      selectedDays.length === 0
+                        ? colors.textMuted
+                        : colors.text,
+                    fontWeight: 600,
+                    fontSize: "13px",
+                    cursor:
+                      isLoading ||
+                      !scheduleName.trim() ||
+                      !scheduleTime ||
+                      !selectedScheduleModeId ||
+                      selectedDays.length === 0
+                        ? "not-allowed"
+                        : "pointer",
+                    opacity:
+                      isLoading ||
+                      !scheduleName.trim() ||
+                      !scheduleTime ||
+                      !selectedScheduleModeId ||
+                      selectedDays.length === 0
+                        ? 0.6
+                        : 1,
+                  }}
+                  disabled={
+                    isLoading ||
+                    !scheduleName.trim() ||
+                    !scheduleTime ||
+                    !selectedScheduleModeId ||
+                    selectedDays.length === 0
+                  }
+                >
+                  {isLoading
+                    ? "Saving..."
+                    : editingSchedule
+                    ? "Update Schedule"
+                    : "Create Schedule"}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <section
+            style={{
+              padding: "24px",
+              backgroundColor: colors.bg,
+            }}
+          >
+            <h3
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                marginBottom: "20px",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                color: colors.text,
+              }}
+            >
+              <span
+                style={{
+                  width: "4px",
+                  height: "16px",
+                  backgroundColor: colors.text,
+                  borderRadius: "2px",
+                }}
+              />
+              Your Schedules ({schedules.length})
+            </h3>
+            <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+              {schedules.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "48px 0" }}>
+                  <div
+                    style={{
+                      width: "80px",
+                      height: "80px",
+                      margin: "0 auto 20px",
+                      borderRadius: "16px",
+                      backgroundColor: colors.cardBg,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      border: `1px solid ${colors.border}`,
+                    }}
+                  >
+                    <span style={{ fontSize: "28px" }}>📅</span>
+                  </div>
+                  <p
+                    style={{
+                      color: colors.textMuted,
+                      fontSize: "14px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    No schedules yet. Create one above to get started!
+                  </p>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
+                  }}
+                >
+                  {schedules.map((schedule) => {
+                    const mode = modes.find((m) => m.id === schedule.mode_id);
+                    return (
+                      <div
+                        key={schedule.id}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          padding: "20px",
+                          borderRadius: "12px",
+                          border: `2px solid ${colors.border}`,
+                          backgroundColor: colors.bg,
+                          opacity: schedule.is_enabled ? 1 : 0.6,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            marginBottom: "12px",
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div
+                              style={{
+                                fontWeight: 700,
+                                fontSize: "14px",
+                                color: colors.text,
+                                marginBottom: "4px",
+                              }}
+                            >
+                              {schedule.name}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: "11px",
+                                color: colors.textMuted,
+                                fontWeight: 500,
+                                marginBottom: "4px",
+                              }}
+                            >
+                              {formatTime(schedule.start_time)} •{" "}
+                              {formatDaysOfWeek(schedule.days_of_week)}
+                            </div>
+                            {mode && (
+                              <div
+                                style={{
+                                  fontSize: "11px",
+                                  color: colors.textMuted,
+                                  fontWeight: 500,
+                                }}
+                              >
+                                Mode: {mode.name}
+                              </div>
+                            )}
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <button
+                              style={{
+                                backgroundColor: "transparent",
+                                border: `2px solid ${
+                                  schedule.is_enabled
+                                    ? colors.text
+                                    : colors.border
+                                }`,
+                                padding: "6px 12px",
+                                borderRadius: "8px",
+                                fontSize: "11px",
+                                cursor: isLoading ? "not-allowed" : "pointer",
+                                color: schedule.is_enabled
+                                  ? colors.text
+                                  : colors.textMuted,
+                                fontWeight: 600,
+                                opacity: isLoading ? 0.5 : 1,
+                              }}
+                              onClick={() =>
+                                handleToggleSchedule(
+                                  schedule.id,
+                                  schedule.is_enabled
+                                )
+                              }
+                              disabled={isLoading}
+                            >
+                              {schedule.is_enabled ? "On" : "Off"}
+                            </button>
+                            <button
+                              style={{
+                                backgroundColor: "transparent",
+                                border: `2px solid ${colors.border}`,
+                                padding: "6px 12px",
+                                borderRadius: "8px",
+                                fontSize: "11px",
+                                cursor: isLoading ? "not-allowed" : "pointer",
+                                color: colors.text,
+                                fontWeight: 600,
+                                opacity: isLoading ? 0.5 : 1,
+                              }}
+                              onClick={() => handleEditSchedule(schedule)}
+                              disabled={isLoading}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              style={{
+                                backgroundColor: "transparent",
+                                border: `2px solid ${colors.border}`,
+                                padding: "6px 12px",
+                                borderRadius: "8px",
+                                fontSize: "11px",
+                                cursor: isLoading ? "not-allowed" : "pointer",
+                                color: colors.text,
+                                fontWeight: 600,
+                                opacity: isLoading ? 0.5 : 1,
+                              }}
+                              onClick={() => handleDeleteSchedule(schedule.id)}
+                              disabled={isLoading}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
