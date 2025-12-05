@@ -4,7 +4,9 @@
 
 Anchor is a cross-platform website blocking application designed to help users maintain focus by creating real friction when accessing distracting websites. The system consists of a Chrome extension that blocks websites using declarativeNetRequest APIs, a React Native mobile app, and a Next.js web application—all synchronized in real-time through Supabase. Users can create custom blocking modes with specific website lists and schedule automatic blocking sessions, creating intentional friction that prevents impulsive browsing and scrolling.
 
-## Diagrams, Demo Video or GIF
+![Website Link](<https://anchor-orcin.vercel.app/>)
+
+## Diagrams
 
 ### System Architecture
 
@@ -126,7 +128,7 @@ Result: All devices stay synchronized in real-time
 
 ## What Did You Learn in This Project?
 
-I learned the intricacies of Manifest V3, including declarativeNetRequest APIs for blocking websites, service workers for background processing, and the complexities of managing state across extension components (popup, background, content scripts). I also learned the intricacies of Supabase's PostgreSQL change streams, event-driven architectures, and handling race conditions when multiple devices update the same state simultaneously. I also learned how to design shared data models, handle platform-specific constraints, and maintain consistent UX patterns across different interaction paradigms. I also learned how to implement Row Level Security (RLS) policies in Supabase, designing efficient database schemas for blocking sessions and schedules, and ensuring proper authentication flows across all platforms. I also learned how to manage blocking state that needs to persist locally (for offline functionality), sync to cloud (for cross-device), and respond to real-time updates required careful orchestration to prevent conflicts and ensure data consistency.
+I learned Manifest V3, including declarativeNetRequest APIs for blocking websites, service workers for background processing, and managing state across extension components (popup, background, content scripts). I also learned Supabase's PostgreSQL change streams, event-driven architectures, and handling race conditions when multiple devices update the same state simultaneously. I also learned how to design shared data models and maintain consistent UX patterns across different platforms. I also learned how to implement Row Level Security (RLS) policies in Supabase, designing efficient database schemas for blocking sessions and schedules, and ensuring proper authentication flows across all platforms. I also learned how to manage blocking state that needs to persist locally (for offline functionality), sync to cloud (for cross-device), and respond to real-time updates.
 
 ## Does Your Project Integrate with AI in Any Interesting Way?
 
@@ -135,10 +137,11 @@ No, Anchor does not currently integrate with AI. The project focuses on creating
 - Analyzing browsing patterns to suggest optimal blocking schedules
 - Detecting when users are most likely to be distracted
 - Personalized website categorization based on user behavior
+- Having the user talk to an AI when they have to unblock a website
 
 ## How Did You Use AI to Assist in Building Your Project?
 
-I used AI to generate boilerplate code for Chrome extension message passing, Supabase real-time subscription setup, and React Native component structures, significantly accelerating initial development. I also used AI to assist in understanding and implementing complex APIs like Chrome's declarativeNetRequest and Supabase's real-time channels, translating documentation into working code. I also used AI to make the UI and the design schema. I learned that managing context is key to using AI effectively. It gets easier with more good code you have in your database.
+I used AI to generate boilerplate code for Chrome extension message passing, Supabase real-time subscription setup, and React Native component structures, significantly accelerating initial development. I also used AI to assist in understanding and implementing APIs like Chrome's declarativeNetRequest and Supabase's real-time channels, translating documentation into working code. I also used AI to make the UI and the design schema for the front end. I learned that managing context is key to using AI effectively. It gets easier with more good code you have in your database.
 
 ## Why This Project is Interesting to You
 
@@ -146,13 +149,13 @@ This project is interesting to me because it a real world application of what we
 
 ## Key Learnings from the Project
 
-1. **Real-Time Sync Requires Careful Conflict Resolution**: When multiple devices can modify the same state (like starting/stopping blocking sessions), you need robust conflict resolution strategies. I learned to implement "last write wins" with proper timestamps, handle race conditions where one device starts a session while another stops it, and use Supabase's real-time subscriptions to immediately propagate changes while preventing infinite sync loops.
+1. **Real-Time Sync Requires Good Conflict Resolution**: When multiple devices can modify the same state (like starting/stopping blocking sessions), you need conflict resolution strategies. I learned to implement "last write wins" with proper timestamps, handle race conditions where one device starts a session while another stops it, and use Supabase's real-time subscriptions to immediately propagate changes.
 
-2. **Chrome Extension State Management is Complex**: Unlike web apps, Chrome extensions have multiple execution contexts (popup, background service worker, content scripts) that don't share memory. I learned to use `chrome.storage.local` for persistence, `chrome.runtime.sendMessage` for communication, and handle the asynchronous nature of all extension APIs. The service worker lifecycle (it can be terminated and restarted) required careful state restoration logic.
+2. **Chrome Extension State Management**: Unlike web apps, Chrome extensions have multiple execution contexts (popup, background service worker, content scripts) that don't share memory. I learned to use `chrome.storage.local` for persistence, `chrome.runtime.sendMessage` for communication, and handle the asynchronous nature of all extension APIs. The service worker lifecycle (it can be terminated and restarted) required state restoration logic. I'm still trying to figure out how to make it more seamless.
 
-3. **Cross-Platform Authentication Consistency**: Maintaining authenticated sessions across Chrome extension, mobile app, and web app using Supabase Auth required understanding token refresh mechanisms, handling session expiration gracefully, and ensuring that authentication state changes in one platform are reflected in others. I implemented session persistence in Chrome storage and proper token refresh logic to handle long-running extension sessions.
+3. **Authentication Consistency**: Maintaining authenticated sessions across Chrome extension, mobile app, and web app using Supabase Auth required understanding token refresh mechanisms, handling session expiration gracefully, and ensuring that authentication state changes in one platform are reflected in others. I implemented session persistence in Chrome storage and proper token refresh logic to handle long-running extension sessions.
 
-4. **Scheduled Blocking Requires Robust Background Processing**: Implementing scheduled blocking sessions that automatically start at specified times required using Chrome's `alarms` API, handling timezone conversions, checking schedules every minute, and ensuring the extension remains functional even when the browser is closed. This taught me about Chrome extension lifecycle management and background task scheduling.
+4. **Scheduled Blocking**: Implementing scheduled blocking sessions that automatically start at specified times required using Chrome's `alarms` API, handling timezone conversions, checking schedules every minute, and ensuring the extension remains functional even when the browser is closed.
 
 ## Technical Architecture & System Design
 
@@ -160,7 +163,7 @@ This project is interesting to me because it a real world application of what we
 
 - **Supabase Auth**: All platforms use Supabase authentication with email/password
 - **Session Management**: Sessions are stored locally (Chrome storage for extension, AsyncStorage for mobile) and automatically refreshed
-- **Row Level Security (RLS)**: Database tables use RLS policies ensuring users can only access their own data
+- **Row Level Security**: Database tables use RLS policies ensuring users can only access their own data
 - **Token Refresh**: Automatic token refresh handles long-running sessions without requiring re-authentication
 
 ### Real-Time Synchronization
