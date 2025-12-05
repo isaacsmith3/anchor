@@ -208,11 +208,6 @@ This project is interesting to me because it a real world application of what we
 - **RLS Policies**: All tables have RLS enabled with policies ensuring users can only access their own records
 - **Automatic Timestamps**: Triggers automatically update `updated_at` timestamps on record changes
 
-## Teams Post
-
-[Teams Post Link](<https://teams.microsoft.com/l/message/19:ac4bc382e82e4ef6a3b61989d55cf4b8@thread.tacv2/1764633098505?tenantId=c6fc6e9b-51fb-48a8-b779-9ee564b40413&groupId=89222c8a-2991-4873-8d7d-10b1cacaebf4&parentMessageId=1764633098505&teamName=CS%20452%20001%20(Fall%202025)&channelName=Report%20-%20Project%20Pitch&createdTime=1764633098505>)
-
-
 ---
 
 ## Work Log
@@ -237,6 +232,6 @@ This project is interesting to me because it a real world application of what we
 | 11/28/25 | Code                    | 3      |
 | 11/29/25 | Code                    | 1      |
 | 11/29/25 | Final touches           | 1      |
-|          | **Total**               | **39** |
-
+| 12/05/25 | Final report            | 2      |
+|          | **Total**               | **41** |
 
