@@ -4,7 +4,7 @@
 
 Anchor is a cross-platform website blocking application designed to help users maintain focus by creating real friction when accessing distracting websites. The system consists of a Chrome extension that blocks websites using declarativeNetRequest APIs, a React Native mobile app, and a Next.js web application—all synchronized in real-time through Supabase. Users can create custom blocking modes with specific website lists and schedule automatic blocking sessions, creating intentional friction that prevents impulsive browsing and scrolling.
 
-![Website Link](<https://anchor-orcin.vercel.app/>)
+[Website Link](https://anchor-orcin.vercel.app/)
 
 ## Diagrams
 
